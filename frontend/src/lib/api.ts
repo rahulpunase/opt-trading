@@ -13,6 +13,15 @@ export interface Strategy {
   open_positions: number;
 }
 
+export interface AvailableStrategy {
+  name: string;
+  enabled: boolean;
+  paper_trade: boolean;
+  instruments: string[];
+  timeframe: string;
+  capital_allocation: number;
+}
+
 export interface Portfolio {
   daily_pnl: number;
   daily_loss_cap: number;
@@ -55,6 +64,7 @@ export const api = {
 
   portfolio: () => request<Portfolio>("/portfolio"),
   strategies: () => request<Strategy[]>("/strategies"),
+  availableStrategies: () => request<AvailableStrategy[]>("/strategies/available"),
 
   startStrategy: (name: string) =>
     request<{ status: string; name: string }>("/strategy/start", {

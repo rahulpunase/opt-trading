@@ -1,15 +1,26 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWs } from "@/lib/ws";
-import { api } from "@/lib/api";
+import { api, type AvailableStrategy } from "@/lib/api";
 import StatusBadge from "@/components/StatusBadge";
 
 type Action = "start" | "stop" | "pause";
+type RunStatus = "running" | "stopped" | "paused";
 
 export default function Strategies() {
-  const { data } = useWs();
+  const { data: wsData } = useWs();
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<Record<string, Action>>({});
+
+  const { data: available = [], isLoading } = useQuery({
+    queryKey: ["strategies/available"],
+    queryFn: api.availableStrategies,
+    refetchInterval: 10_000,
+  });
+
+  const runningMap = new Map(
+    (wsData?.strategies ?? []).map((s) => [s.name, s])
+  );
 
   const mutation = useMutation({
     mutationFn: ({ name, action }: { name: string; action: Action }) => {
@@ -32,7 +43,11 @@ export default function Strategies() {
     mutation.mutate({ name, action });
   };
 
-  const strategies = data?.strategies ?? [];
+  const rows = available.map((avail: AvailableStrategy) => {
+    const running = runningMap.get(avail.name);
+    const status: RunStatus = running ? (running.status as RunStatus ?? "running") : "stopped";
+    return { ...avail, status, liveData: running ?? null };
+  });
 
   return (
     <div className="space-y-6">
@@ -41,14 +56,18 @@ export default function Strategies() {
           Strategies
         </h2>
         <p className="text-sm text-[var(--color-text-muted)]">
-          Manage and monitor all loaded strategies
+          All available strategies — start the ones you want to run
         </p>
       </div>
 
       <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] overflow-hidden">
-        {strategies.length === 0 ? (
+        {isLoading ? (
           <div className="flex h-40 items-center justify-center text-sm text-[var(--color-text-muted)]">
-            No strategies loaded. Waiting for data…
+            Loading strategies…
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="flex h-40 items-center justify-center text-sm text-[var(--color-text-muted)]">
+            No strategies found in the strategies folder.
           </div>
         ) : (
           <table className="w-full text-sm">
@@ -57,13 +76,15 @@ export default function Strategies() {
                 <th className="px-5 py-3">Name</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Mode</th>
+                <th className="px-5 py-3">Instruments</th>
+                <th className="px-5 py-3">Timeframe</th>
                 <th className="px-5 py-3 text-right">Trades Today</th>
                 <th className="px-5 py-3 text-right">Open Positions</th>
                 <th className="px-5 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)]">
-              {strategies.map((s) => {
+              {rows.map((s) => {
                 const isBusy = !!pending[s.name];
                 return (
                   <tr
@@ -74,21 +95,22 @@ export default function Strategies() {
                       {s.name}
                     </td>
                     <td className="px-5 py-3.5">
-                      <StatusBadge
-                        variant={
-                          (s.status as "running" | "stopped" | "paused") ??
-                          "stopped"
-                        }
-                      />
+                      <StatusBadge variant={s.status} />
                     </td>
                     <td className="px-5 py-3.5">
                       <StatusBadge variant={s.paper_trade ? "paper" : "live"} />
                     </td>
-                    <td className="px-5 py-3.5 text-right text-[var(--color-text-muted)]">
-                      {s.trades_today}
+                    <td className="px-5 py-3.5 text-[var(--color-text-muted)]">
+                      {s.instruments.join(", ") || "—"}
+                    </td>
+                    <td className="px-5 py-3.5 text-[var(--color-text-muted)]">
+                      {s.timeframe}
                     </td>
                     <td className="px-5 py-3.5 text-right text-[var(--color-text-muted)]">
-                      {s.open_positions}
+                      {s.liveData ? s.liveData.trades_today : "—"}
+                    </td>
+                    <td className="px-5 py-3.5 text-right text-[var(--color-text-muted)]">
+                      {s.liveData ? s.liveData.open_positions : "—"}
                     </td>
                     <td className="px-5 py-3.5">
                       <div className="flex justify-end gap-1.5">

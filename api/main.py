@@ -3,7 +3,10 @@ import datetime
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Optional
+
+import yaml
 
 import redis as redis_lib
 from dotenv import load_dotenv
@@ -54,16 +57,7 @@ async def lifespan(app: FastAPI):
     _loader = StrategyLoader(_broker, _risk_gate)
     _event_bus.start_scheduler()
 
-    strategies = _loader.load_all()
-    for s in strategies:
-        try:
-            s.on_start()
-            _event_bus.register(s)
-            _running_strategies[s.name] = s
-        except Exception as e:
-            logger.error("Failed to start strategy %s: %s", s.name, e)
-
-    logger.info("Platform started with %d strategies", len(_running_strategies))
+    logger.info("Platform started. No strategies auto-loaded — start them via API.")
     yield
 
     for s in _running_strategies.values():
@@ -152,6 +146,27 @@ async def auth_status():
         return {"authenticated": True, "user_id": profile.get("user_id"), "user_name": profile.get("user_name")}
     except Exception:
         return {"authenticated": False}
+
+
+@app.get("/strategies/available")
+async def list_available_strategies():
+    strategies_dir = Path(__file__).parent.parent / "strategies"
+    result = []
+    for yaml_file in sorted(strategies_dir.glob("*.yaml")):
+        try:
+            with open(yaml_file) as f:
+                cfg = yaml.safe_load(f)
+            result.append({
+                "name": cfg.get("name", yaml_file.stem),
+                "enabled": cfg.get("enabled", True),
+                "paper_trade": cfg.get("paper_trade", True),
+                "instruments": cfg.get("instruments", []),
+                "timeframe": cfg.get("timeframe", "5min"),
+                "capital_allocation": cfg.get("capital_allocation", 0.10),
+            })
+        except Exception as e:
+            logger.warning("Could not parse %s: %s", yaml_file.name, e)
+    return result
 
 
 @app.get("/strategies")

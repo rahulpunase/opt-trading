@@ -1,0 +1,17 @@
+name: NiftyExpiryStraddle
+enabled: true
+paper_trade: true
+
+instruments:
+  - NIFTY          # underlying index — spot price drives ATM strike selection
+
+timeframe: 1min    # 1-min candles for precise entry timing and SL polling
+order_type: MIS
+exchange: NFO
+
+capital_allocation: 0.10
+max_trades_per_day: 8   # 4 slots × 2 legs
+
+params:
+  lot_size: 65       # 1 Nifty lot
+  strike_gap: 50     # Nifty strike interval (ATM rounded to nearest 50)

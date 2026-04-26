@@ -13,6 +13,7 @@ class OrderRouter:
         self._paper_trade = paper_trade
         self._last_order_times: list[float] = []
         self._rate_limit = 10  # orders per second
+        self._instrument_cache: dict[str, list] = {}
 
     def _throttle(self):
         now = time.monotonic()
@@ -110,3 +111,29 @@ class OrderRouter:
 
     def get_margins(self) -> dict:
         return self._kite.margins()
+
+    def get_instruments(self, exchange: str) -> list:
+        if self._paper_trade:
+            return []
+        if exchange in self._instrument_cache:
+            return self._instrument_cache[exchange]
+        try:
+            instruments = self._kite.instruments(exchange)
+            self._instrument_cache[exchange] = instruments
+            return instruments
+        except Exception as e:
+            logger.error("[INSTRUMENTS ERROR] exchange=%s error=%s", exchange, e)
+            return []
+
+    def get_ltp(self, symbols: list, exchange: str = "NFO") -> dict:
+        if self._paper_trade:
+            return {sym: 0.0 for sym in symbols}
+        if not symbols:
+            return {}
+        try:
+            keys = [f"{exchange}:{sym}" for sym in symbols]
+            result = self._kite.ltp(keys)
+            return {k.split(":", 1)[1]: v["last_price"] for k, v in result.items()}
+        except Exception as e:
+            logger.error("[LTP ERROR] symbols=%s error=%s", symbols, e)
+            return {}

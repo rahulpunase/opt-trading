@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { useWs } from "@/lib/ws";
+import SearchBar from "@/components/SearchBar";
 
 const navItems = [
   {
@@ -119,8 +120,8 @@ export default function Layout() {
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex h-14 items-center justify-between border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6">
-          <span className="text-sm font-medium text-[var(--color-text-muted)]">
+        <header className="flex h-14 items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6">
+          <span className="shrink-0 text-sm font-medium text-[var(--color-text-muted)]">
             {new Date().toLocaleDateString("en-IN", {
               weekday: "long",
               year: "numeric",
@@ -129,8 +130,11 @@ export default function Layout() {
               timeZone: "Asia/Kolkata",
             })}
           </span>
+          <div className="flex flex-1 justify-center">
+            <SearchBar />
+          </div>
           {/* WS status */}
-          <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+          <div className="flex shrink-0 items-center gap-2 text-xs text-[var(--color-text-muted)]">
             <span
               className={`h-2 w-2 rounded-full ${
                 status === "connected"

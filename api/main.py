@@ -11,6 +11,7 @@ import yaml
 import redis as redis_lib
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from kiteconnect import KiteConnect
 from pydantic import BaseModel
@@ -46,16 +47,26 @@ async def lifespan(app: FastAPI):
 
     _redis = make_redis_client()
     _kite = KiteConnect(api_key=os.getenv("KITE_API_KEY", ""))
-    _instrument_cache = InstrumentCache(_kite, _redis)
+    _instrument_cache = InstrumentCache(_kite)
 
     stored_token = _redis.get("kite:access_token")
     if stored_token:
         _kite.set_access_token(stored_token.decode())
         logger.info("Restored access_token from Redis")
-        if _instrument_cache.is_cached():
-            logger.info("Instrument cache warm (fetched_at=%s)", _instrument_cache.fetched_at())
+
+    # Warm Redis from today's file cache on startup (survives Redis restarts without re-auth)
+    if not _instrument_cache.is_cached():
+        today_file = _instrument_cache.today_cache_file()
+        if today_file:
+            try:
+                count = await asyncio.get_event_loop().run_in_executor(
+                    None, _instrument_cache.fetch_and_cache
+                )
+                logger.info("Redis warmed from file cache on startup: %d instruments", count)
+            except Exception as e:
+                logger.warning("Could not warm Redis from file cache: %s", e)
         else:
-            logger.info("Instrument cache empty — will populate after /auth")
+            logger.info("No instrument file cache for today — will populate on first /auth or search")
 
     paper_default = os.getenv("PAPER_TRADE_DEFAULT", "true").lower() == "true"
     _broker = OrderRouter(_kite, paper_trade=paper_default)
@@ -308,9 +319,243 @@ async def instruments_refresh():
         count = await asyncio.get_event_loop().run_in_executor(
             None, _instrument_cache.fetch_and_cache
         )
+        _kite_instruments_cache.clear()
         return {"status": "ok", "instruments_cached": count, "fetched_at": _instrument_cache.fetched_at()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/instruments/cache")
+async def instruments_cache_file():
+    """Serve today's instrument JSON file for direct frontend consumption."""
+    f = _instrument_cache.today_cache_file()
+    if not f:
+        raise HTTPException(
+            status_code=404,
+            detail="No instrument cache file for today — authenticate or trigger a refresh first.",
+        )
+    return FileResponse(f, media_type="application/json", filename=f.name)
+
+
+# In-memory cache for raw kite.instruments() lists (keyed by exchange).
+# Separate from InstrumentCache (Redis) — used by symbol/option-chain UI endpoints.
+_kite_instruments_cache: dict[str, list] = {}
+
+
+def _require_auth() -> None:
+    """Raise 503 if no Kite access token is present."""
+    if not _redis.get("kite:access_token"):
+        raise HTTPException(status_code=503, detail="not_authenticated")
+
+
+def _cached_instruments(exchange: str) -> list:
+    """Return full Kite instruments list for an exchange, cached in memory."""
+    ex = exchange.upper()
+    if ex not in _kite_instruments_cache:
+        _kite_instruments_cache[ex] = _kite.instruments(ex)
+    return _kite_instruments_cache[ex]
+
+
+@app.get("/instruments/underlyings")
+async def instruments_underlyings(q: str):
+    """Return unique underlying names matching the query (for search bar autocomplete)."""
+    # Auto-populate the cache on first search if we have a token but cache is cold.
+    if not _instrument_cache.is_cached() and _redis.get("kite:access_token"):
+        try:
+            count = await asyncio.get_event_loop().run_in_executor(
+                None, _instrument_cache.fetch_and_cache
+            )
+            logger.info("Instrument cache auto-populated on search: %d instruments", count)
+        except Exception as e:
+            logger.warning("Auto cache populate failed: %s", e)
+
+    if not q.strip():
+        return {"results": [], "cache_populated": _instrument_cache.is_cached()}
+
+    # search() only returns {tradingsymbol, exchange, instrument_token} — fetch full details.
+    def _enrich(hits: list[dict]) -> list[dict]:
+        enriched = []
+        for hit in hits:
+            detail = _instrument_cache.get_instrument(hit["instrument_token"])
+            if detail:
+                enriched.append(detail)
+        return enriched
+
+    results: list[dict] = []
+    seen: set[str] = set()
+
+    # NSE + BSE equities
+    for exch in ("NSE", "BSE"):
+        for detail in _enrich(_instrument_cache.search(q.upper(), exch)):
+            if detail.get("instrument_type") == "EQ":
+                sym = detail.get("tradingsymbol", "")
+                if sym and sym not in seen:
+                    seen.add(sym)
+                    results.append({"symbol": sym, "exchange": exch, "instrument_type": "EQ"})
+
+    # NFO + BFO derivatives: individual FUT contracts + one option-chain entry per underlying
+    option_underlyings_seen: set[str] = set()
+    for exch in ("NFO", "BFO"):
+        for detail in _enrich(_instrument_cache.search(q.upper(), exch)):
+            itype = detail.get("instrument_type", "")
+            tradingsymbol = detail.get("tradingsymbol", "")
+            name = detail.get("name", "")
+
+            if itype == "FUT":
+                # Each futures contract is a distinct, searchable instrument
+                if tradingsymbol and tradingsymbol not in seen:
+                    seen.add(tradingsymbol)
+                    results.append({"symbol": tradingsymbol, "exchange": exch, "instrument_type": "FUT"})
+
+            elif itype in ("CE", "PE"):
+                # Collapse all strikes/expiries into one option-chain entry per underlying
+                if name and name.upper().startswith(q.upper()) and name not in option_underlyings_seen:
+                    option_underlyings_seen.add(name)
+                    key = f"{exch}:{name}:OPTIONS"
+                    if key not in seen:
+                        seen.add(key)
+                        results.append({"symbol": name, "exchange": exch, "instrument_type": "OPTIONS"})
+
+    return {"results": results[:20], "cache_populated": _instrument_cache.is_cached()}
+
+
+@app.get("/symbol/{symbol}/quote")
+async def symbol_quote(symbol: str, exchange: str = "NSE"):
+    """Return live OHLCV quote for a symbol. Falls back to NSE when exchange is NFO."""
+    _require_auth()
+    sym = symbol.upper()
+    ex = exchange.upper()
+
+    def _fetch_quote(ex_key: str):
+        key = f"{ex_key}:{sym}"
+        data = _kite.quote([key])
+        return data.get(key)
+
+    try:
+        q = _fetch_quote(ex)
+        if not q and ex == "NFO":
+            q = _fetch_quote("NSE")
+        if not q:
+            raise HTTPException(status_code=404, detail=f"{sym} not found")
+        ohlc = q.get("ohlc", {})
+        ltp = q.get("last_price", 0.0)
+        prev_close = ohlc.get("close", ltp) or ltp
+        change = round(ltp - prev_close, 2)
+        change_pct = round(change / prev_close * 100, 2) if prev_close else 0.0
+        return {
+            "symbol": sym,
+            "exchange": ex,
+            "ltp": ltp,
+            "open": ohlc.get("open", 0.0),
+            "high": ohlc.get("high", 0.0),
+            "low": ohlc.get("low", 0.0),
+            "close": prev_close,
+            "volume": q.get("volume", 0),
+            "change": change,
+            "change_pct": change_pct,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+
+@app.get("/symbol/{symbol}/expiries")
+async def symbol_expiries(symbol: str, exchange: str = "NFO"):
+    """Return sorted upcoming expiry dates for an underlying symbol."""
+    _require_auth()
+    try:
+        instruments = await asyncio.get_event_loop().run_in_executor(
+            None, _cached_instruments, exchange
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    today = datetime.date.today()
+    expiry_set: set[datetime.date] = set()
+    for inst in instruments:
+        if (
+            inst.get("name", "").upper() == symbol.upper()
+            and inst.get("expiry")
+            and inst["expiry"] >= today
+        ):
+            expiry_set.add(inst["expiry"])
+
+    return {
+        "symbol": symbol.upper(),
+        "exchange": exchange.upper(),
+        "expiries": [e.isoformat() for e in sorted(expiry_set)],
+    }
+
+
+@app.get("/symbol/{symbol}/option-chain")
+async def symbol_option_chain(symbol: str, expiry: str, exchange: str = "NFO"):
+    """Return the full option chain for a symbol + expiry, with LTP for each leg."""
+    _require_auth()
+
+    try:
+        expiry_date = datetime.date.fromisoformat(expiry)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Invalid expiry '{expiry}', expected YYYY-MM-DD")
+
+    try:
+        instruments = await asyncio.get_event_loop().run_in_executor(
+            None, _cached_instruments, exchange
+        )
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=str(e))
+
+    chain_insts = [
+        inst for inst in instruments
+        if inst.get("name", "").upper() == symbol.upper()
+        and inst.get("expiry") == expiry_date
+        and inst.get("instrument_type") in ("CE", "PE")
+    ]
+
+    if not chain_insts:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No option chain found for {symbol.upper()} expiry {expiry}",
+        )
+
+    # Build strike map
+    strikes: dict[float, dict] = {}
+    for inst in chain_insts:
+        strike = inst["strike"]
+        itype = inst["instrument_type"]
+        if strike not in strikes:
+            strikes[strike] = {"CE": None, "PE": None}
+        strikes[strike][itype] = {
+            "tradingsymbol": inst["tradingsymbol"],
+            "lot_size": inst["lot_size"],
+            "ltp": 0.0,
+        }
+
+    # Batch LTP fetch — failure is non-fatal, chain still renders
+    try:
+        all_syms = [inst["tradingsymbol"] for inst in chain_insts]
+        keys = [f"{exchange.upper()}:{s}" for s in all_syms]
+        ltp_data = _kite.ltp(keys)
+        sym_ltp = {k.split(":", 1)[1]: v.get("last_price", 0.0) for k, v in ltp_data.items()}
+        for strike_data in strikes.values():
+            for leg in ("CE", "PE"):
+                if strike_data[leg]:
+                    ts = strike_data[leg]["tradingsymbol"]
+                    strike_data[leg]["ltp"] = sym_ltp.get(ts, 0.0)
+    except Exception:
+        pass
+
+    chain = [
+        {"strike": strike, "ce": data["CE"], "pe": data["PE"]}
+        for strike, data in sorted(strikes.items())
+    ]
+
+    return {
+        "symbol": symbol.upper(),
+        "exchange": exchange.upper(),
+        "expiry": expiry,
+        "chain": chain,
+    }
 
 
 @app.get("/health")

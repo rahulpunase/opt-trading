@@ -68,6 +68,37 @@ export interface Trade {
   paper_trade: boolean;
 }
 
+export interface Underlying {
+  symbol: string;
+  exchange: string;
+  instrument_type: string;
+}
+
+export interface SymbolQuote {
+  symbol: string;
+  exchange: string;
+  ltp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  change: number;
+  change_pct: number;
+}
+
+export interface OptionLeg {
+  tradingsymbol: string;
+  lot_size: number;
+  ltp: number;
+}
+
+export interface OptionChainRow {
+  strike: number;
+  ce: OptionLeg | null;
+  pe: OptionLeg | null;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -110,6 +141,22 @@ export const api = {
     }),
 
   margins: () => request<MarginData>("/margins"),
+
+  searchUnderlyings: (q: string) =>
+    request<{ results: Underlying[]; cache_populated: boolean }>(`/instruments/underlyings?q=${encodeURIComponent(q)}`),
+
+  symbolQuote: (symbol: string, exchange: string) =>
+    request<SymbolQuote>(`/symbol/${encodeURIComponent(symbol)}/quote?exchange=${encodeURIComponent(exchange)}`),
+
+  symbolExpiries: (symbol: string, exchange: string) =>
+    request<{ symbol: string; exchange: string; expiries: string[] }>(
+      `/symbol/${encodeURIComponent(symbol)}/expiries?exchange=${encodeURIComponent(exchange)}`
+    ),
+
+  optionChain: (symbol: string, expiry: string, exchange: string) =>
+    request<{ symbol: string; exchange: string; expiry: string; chain: OptionChainRow[] }>(
+      `/symbol/${encodeURIComponent(symbol)}/option-chain?expiry=${encodeURIComponent(expiry)}&exchange=${encodeURIComponent(exchange)}`
+    ),
 
   strategyPositions: (name: string) =>
     request<{ name: string; positions: Record<string, unknown> }>(

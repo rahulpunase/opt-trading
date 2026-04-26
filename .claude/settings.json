@@ -15,7 +15,10 @@
       "Bash(python3 -m py_compile /Users/rahulpunase/Desktop/opt-trading/core/instrument_cache.py)",
       "Bash(python3 -m py_compile /Users/rahulpunase/Desktop/opt-trading/core/strategy_loader.py)",
       "Bash(python3 -m py_compile /Users/rahulpunase/Desktop/opt-trading/api/main.py)",
-      "Bash(python3 -m py_compile /Users/rahulpunase/Desktop/opt-trading/core/base_strategy.py)"
+      "Bash(python3 -m py_compile /Users/rahulpunase/Desktop/opt-trading/core/base_strategy.py)",
+      "Bash(pip show *)",
+      "Bash(python3 -m py_compile core/instrument_cache.py)",
+      "Bash(python3 -m py_compile api/main.py)"
     ],
     "additionalDirectories": [
       "/Users/rahulpunase/Desktop/opt-trading"

@@ -12,3 +12,5 @@ logs/*.log
 
 frontend/node_modules/
 frontend/dist/
+
+data/instruments_*.json

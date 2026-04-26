@@ -1,35 +1,38 @@
 import json
 import logging
-from datetime import datetime
+import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
-
-import redis
 
 logger = logging.getLogger("instrument_cache")
 
 _IST = ZoneInfo("Asia/Kolkata")
-
-# Redis key layout:
-#   instruments:lookup:{EXCHANGE}   → hash  { tradingsymbol: instrument_token }
-#   instruments:detail:{token}      → string  JSON of full instrument dict
-#   instruments:fetched_at          → string  ISO timestamp of last fetch
-
 _EXCHANGES = ["NSE", "BSE", "NFO", "BFO", "MCX", "CDS"]
-_TTL_SECONDS = 24 * 60 * 60  # 24 hours — instruments don't change intraday
+
+# File cache: data/instruments_YYYY-MM-DD.json (one file per trading day)
+_CACHE_DIR = Path(__file__).parent.parent / "data"
 
 
-def _lookup_key(exchange: str) -> str:
-    return f"instruments:lookup:{exchange.upper()}"
+def _today_file() -> Path:
+    return _CACHE_DIR / f"instruments_{datetime.date.today().isoformat()}.json"
 
 
-def _detail_key(token: int | str) -> str:
-    return f"instruments:detail:{token}"
+def _expiry_str(val) -> str | None:
+    """Normalise expiry to ISO string regardless of whether it's a date or already a string."""
+    if val is None:
+        return None
+    return val if isinstance(val, str) else val.isoformat()
 
 
 class InstrumentCache:
-    def __init__(self, kite, redis_client: redis.Redis):
+    def __init__(self, kite):
         self._kite = kite
-        self._r = redis_client
+        # Single atomic in-memory store. None = not loaded yet.
+        # Structure: {"lookup": {exchange: {symbol: token}},
+        #             "details": {token: dict},
+        #             "by_exchange": {exchange: [dict, ...]},
+        #             "fetched_at": ISO str}
+        self._data: dict | None = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -37,117 +40,155 @@ class InstrumentCache:
 
     def fetch_and_cache(self) -> int:
         """
-        Download ALL instruments from Kite and store in Redis.
-        Returns the total number of instruments cached.
-
-        Should be called once after successful auth each morning.
+        Load today's file cache if it exists, otherwise fetch from Kite and
+        write the file. Builds the in-memory index either way.
+        Returns the total number of instruments loaded.
         """
-        logger.info("Fetching instruments from Kite...")
-        all_instruments = self._kite.instruments()  # returns list of dicts
-        logger.info("Fetched %d instruments total", len(all_instruments))
+        _CACHE_DIR.mkdir(exist_ok=True)
+        today_file = _today_file()
 
-        pipe = self._r.pipeline(transaction=False)
+        if today_file.exists():
+            logger.info("Loading instruments from file cache: %s", today_file)
+            with open(today_file) as f:
+                payload = json.load(f)
+            instruments = payload["instruments"]
+            fetched_at = payload.get("fetched_at", datetime.datetime.now(_IST).isoformat())
+            logger.info("Loaded %d instruments from file cache", len(instruments))
+        else:
+            logger.info("Fetching instruments from Kite...")
+            raw = self._kite.instruments()
+            logger.info("Fetched %d instruments total", len(raw))
+            instruments = self._normalise(raw)
+            fetched_at = datetime.datetime.now(_IST).isoformat()
+            self._write_file(today_file, instruments, fetched_at)
+            self._cleanup_old_files(today_file)
 
-        # Delete stale lookup hashes before repopulating
-        for exchange in _EXCHANGES:
-            pipe.delete(_lookup_key(exchange))
+        self._build_index(instruments, fetched_at)
+        return len(instruments)
 
-        cached = 0
-        for inst in all_instruments:
-            exchange = inst.get("exchange", "")
-            symbol = inst.get("tradingsymbol", "")
-            token = inst.get("instrument_token")
-            if not (exchange and symbol and token is not None):
-                continue
-
-            # symbol → token lookup per exchange
-            pipe.hset(_lookup_key(exchange), symbol, str(token))
-
-            # token → full detail (JSON)
-            detail = {
-                "instrument_token": token,
-                "exchange_token": inst.get("exchange_token"),
-                "tradingsymbol": symbol,
-                "name": inst.get("name", ""),
-                "last_price": inst.get("last_price", 0),
-                "expiry": inst.get("expiry").isoformat() if inst.get("expiry") else None,
-                "strike": inst.get("strike", 0),
-                "tick_size": inst.get("tick_size", 0),
-                "lot_size": inst.get("lot_size", 1),
-                "instrument_type": inst.get("instrument_type", ""),
-                "segment": inst.get("segment", ""),
-                "exchange": exchange,
-            }
-            pipe.set(_detail_key(token), json.dumps(detail), ex=_TTL_SECONDS)
-            cached += 1
-
-        # Set TTL on lookup hashes
-        for exchange in _EXCHANGES:
-            pipe.expire(_lookup_key(exchange), _TTL_SECONDS)
-
-        # Record when we fetched
-        pipe.set(
-            "instruments:fetched_at",
-            datetime.now(_IST).isoformat(),
-            ex=_TTL_SECONDS,
-        )
-
-        pipe.execute()
-        logger.info("Cached %d instruments in Redis (TTL=%ds)", cached, _TTL_SECONDS)
-        return cached
+    def today_cache_file(self) -> Path | None:
+        """Return today's JSON file path if it exists, else None."""
+        f = _today_file()
+        return f if f.exists() else None
 
     def is_cached(self) -> bool:
-        return bool(self._r.exists("instruments:fetched_at"))
+        return self._data is not None
 
     def fetched_at(self) -> str | None:
-        val = self._r.get("instruments:fetched_at")
-        return val.decode() if val else None
+        return self._data["fetched_at"] if self._data else None
 
     def get_token(self, tradingsymbol: str, exchange: str) -> int | None:
         """Resolve a symbol+exchange pair to an instrument_token."""
-        val = self._r.hget(_lookup_key(exchange), tradingsymbol)
-        return int(val.decode()) if val else None
+        if not self._data:
+            return None
+        return self._data["lookup"].get(exchange.upper(), {}).get(tradingsymbol)
 
     def get_tokens(self, symbols: list[str], exchange: str) -> list[int]:
         """Bulk-resolve a list of symbols for one exchange. Skips unknowns."""
-        if not symbols:
+        if not symbols or not self._data:
             return []
-        pipe = self._r.pipeline(transaction=False)
-        for sym in symbols:
-            pipe.hget(_lookup_key(exchange), sym)
-        results = pipe.execute()
+        lookup = self._data["lookup"].get(exchange.upper(), {})
         tokens = []
-        for sym, val in zip(symbols, results):
-            if val:
-                tokens.append(int(val.decode()))
+        for sym in symbols:
+            token = lookup.get(sym)
+            if token is not None:
+                tokens.append(token)
             else:
                 logger.warning("No instrument token found for %s:%s", exchange, sym)
         return tokens
 
     def get_instrument(self, token: int | str) -> dict | None:
         """Return the full instrument dict for a given token."""
-        val = self._r.get(_detail_key(token))
-        return json.loads(val.decode()) if val else None
+        if not self._data:
+            return None
+        return self._data["details"].get(int(token))
 
     def search(self, query: str, exchange: str | None = None) -> list[dict]:
-        """
-        Simple prefix search across symbol names.
-        Useful for debugging / the /instruments/search endpoint.
-        Searches only the exchanges specified (all if None).
-        """
+        """Prefix search across tradingsymbols. Returns up to 50 results."""
+        if not self._data:
+            return []
         query_upper = query.upper()
         exchanges = [exchange.upper()] if exchange else _EXCHANGES
         results = []
         for exch in exchanges:
-            key = _lookup_key(exch)
-            # HSCAN to avoid blocking Redis on large hashes
-            cursor = 0
-            while True:
-                cursor, items = self._r.hscan(key, cursor, match=f"{query_upper}*", count=100)
-                for sym_bytes, token_bytes in items.items():
-                    results.append({"tradingsymbol": sym_bytes.decode(), "exchange": exch, "instrument_token": int(token_bytes.decode())})
-                if cursor == 0:
-                    break
-            if len(results) >= 50:  # cap results
-                break
-        return results[:50]
+            for inst in self._data["by_exchange"].get(exch, []):
+                if inst["tradingsymbol"].startswith(query_upper):
+                    results.append({
+                        "tradingsymbol": inst["tradingsymbol"],
+                        "exchange": exch,
+                        "instrument_token": inst["instrument_token"],
+                    })
+                    if len(results) >= 50:
+                        return results
+        return results
+
+    # ------------------------------------------------------------------
+    # Private helpers
+    # ------------------------------------------------------------------
+
+    def _build_index(self, instruments: list[dict], fetched_at: str) -> None:
+        """Build in-memory lookup structures and swap them in atomically."""
+        lookup: dict[str, dict[str, int]] = {}
+        details: dict[int, dict] = {}
+        by_exchange: dict[str, list[dict]] = {}
+
+        for inst in instruments:
+            exchange = inst.get("exchange", "")
+            symbol = inst.get("tradingsymbol", "")
+            token = inst.get("instrument_token")
+            if not (exchange and symbol and token is not None):
+                continue
+
+            lookup.setdefault(exchange, {})[symbol] = token
+            details[token] = inst
+            by_exchange.setdefault(exchange, []).append(inst)
+
+        # Single assignment — atomic under CPython's GIL
+        self._data = {
+            "lookup": lookup,
+            "details": details,
+            "by_exchange": by_exchange,
+            "fetched_at": fetched_at,
+        }
+        logger.info("In-memory index built: %d instruments across %d exchanges", len(details), len(by_exchange))
+
+    def _normalise(self, raw: list[dict]) -> list[dict]:
+        """Convert Kite instrument dicts to a JSON-serialisable form."""
+        out = []
+        for inst in raw:
+            out.append({
+                "instrument_token": inst.get("instrument_token"),
+                "exchange_token": inst.get("exchange_token"),
+                "tradingsymbol": inst.get("tradingsymbol", ""),
+                "name": inst.get("name", ""),
+                "last_price": inst.get("last_price", 0),
+                "expiry": _expiry_str(inst.get("expiry")),
+                "strike": inst.get("strike", 0),
+                "tick_size": inst.get("tick_size", 0),
+                "lot_size": inst.get("lot_size", 1),
+                "instrument_type": inst.get("instrument_type", ""),
+                "segment": inst.get("segment", ""),
+                "exchange": inst.get("exchange", ""),
+            })
+        return out
+
+    def _write_file(self, path: Path, instruments: list[dict], fetched_at: str) -> None:
+        """Write instruments to today's JSON cache file atomically."""
+        payload = {
+            "date": datetime.date.today().isoformat(),
+            "fetched_at": fetched_at,
+            "count": len(instruments),
+            "instruments": instruments,
+        }
+        tmp = path.with_suffix(".tmp")
+        with open(tmp, "w") as f:
+            json.dump(payload, f, separators=(",", ":"))
+        tmp.rename(path)
+        logger.info("Wrote instrument cache to %s (%d instruments)", path.name, len(instruments))
+
+    def _cleanup_old_files(self, keep: Path) -> None:
+        """Delete instrument JSON files from previous days."""
+        for f in _CACHE_DIR.glob("instruments_*.json"):
+            if f != keep:
+                f.unlink(missing_ok=True)
+                logger.info("Removed old cache file: %s", f.name)

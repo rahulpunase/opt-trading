@@ -9,6 +9,7 @@ import Dashboard from "@/pages/Dashboard";
 import Strategies from "@/pages/Strategies";
 import Positions from "@/pages/Positions";
 import Trades from "@/pages/Trades";
+import SymbolPage from "@/pages/SymbolPage";
 
 export default function App() {
   return (
@@ -24,6 +25,7 @@ export default function App() {
                 <Route path="/strategies" element={<Strategies />} />
                 <Route path="/positions" element={<Positions />} />
                 <Route path="/trades" element={<Trades />} />
+                <Route path="/symbol/:symbol" element={<SymbolPage />} />
               </Route>
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

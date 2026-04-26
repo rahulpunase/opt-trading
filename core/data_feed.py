@@ -36,7 +36,10 @@ class DataFeed:
         self._ticker.on_connect = self._on_connect
         self._ticker.on_close = self._on_close
         self._ticker.on_error = self._on_error
-        self._ticker.connect(threaded=True, reconnect=True, reconnect_max_delay=30, reconnect_max_tries=50)
+        self._ticker.reconnect = True
+        self._ticker.reconnect_max_delay = 30
+        self._ticker.reconnect_max_tries = 50
+        self._ticker.connect(threaded=True)
 
     def stop(self):
         if self._ticker:

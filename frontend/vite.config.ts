@@ -8,14 +8,22 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
   },
+  css: {
+    devSourcemap: true,
+  },
+  build: {
+    sourcemap: true,
+  },
   server: {
+    host: true,
+    port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:8000",
+        target: "http://trader:8000",
         rewrite: (p) => p.replace(/^\/api/, ""),
       },
       "/ws": {
-        target: "ws://localhost:8000",
+        target: "ws://trader:8000",
         ws: true,
       },
     },

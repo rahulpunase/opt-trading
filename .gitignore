@@ -1,0 +1,11 @@
+.env
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.git/
+trades/*.csv
+logs/*.log
+*.egg-info/
+.pytest_cache/
+.mypy_cache/

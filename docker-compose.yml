@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+
+  trader:
+    build: .
+    container_name: kite_trader
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./trades:/app/trades
+      - ./strategies:/app/strategies
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - trader_net
+
+  dashboard:
+    build: .
+    container_name: kite_dashboard
+    restart: unless-stopped
+    env_file: .env
+    command: ["streamlit", "run", "dashboard/app.py",
+              "--server.port=8501", "--server.address=0.0.0.0"]
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./trades:/app/trades
+    depends_on:
+      - trader
+    networks:
+      - trader_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: kite_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - trader_net
+
+volumes:
+  redis_data:
+
+networks:
+  trader_net:
+    driver: bridge

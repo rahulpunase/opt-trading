@@ -1,0 +1,25 @@
+name: PositionalFutures
+enabled: true
+paper_trade: true
+
+instruments:
+  - NIFTY
+  - RELIANCE
+
+timeframe: 15min
+order_type: NRML
+exchange: NFO
+
+capital_allocation: 0.25
+max_trades_per_day: 2
+max_open_positions: 2
+
+params:
+  ema_fast: 20
+  ema_slow: 50
+  atr_period: 14
+  atr_sl_multiplier: 2.0
+  atr_target_multiplier: 3.0
+  rsi_period: 14
+  rsi_overbought: 70
+  rsi_oversold: 30

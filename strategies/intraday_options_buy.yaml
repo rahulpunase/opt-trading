@@ -1,0 +1,25 @@
+name: IntradayOptionsBuy
+enabled: true
+paper_trade: true
+
+instruments:
+  - NIFTY
+  - BANKNIFTY
+
+timeframe: 5min
+order_type: MIS
+exchange: NFO
+
+capital_allocation: 0.20
+max_trades_per_day: 4
+max_open_positions: 2
+
+params:
+  ema_fast: 9
+  ema_slow: 21
+  rsi_period: 14
+  rsi_entry_long: 55
+  rsi_entry_short: 45
+  sl_pct: 0.35
+  target1_pct: 0.50
+  target2_pct: 1.00

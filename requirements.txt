@@ -1,0 +1,13 @@
+kiteconnect==4.2.0
+pandas==2.2.2
+ta==0.11.0
+redis==5.0.4
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-dotenv==1.0.1
+python-telegram-bot==21.3
+streamlit==1.35.0
+apscheduler==3.10.4
+pyyaml==6.0.1
+httpx==0.27.0
+pytest==8.2.2

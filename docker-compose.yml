@@ -24,6 +24,19 @@ services:
     networks:
       - trader_net
 
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kite_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - trader
+    networks:
+      - trader_net
+
   dashboard:
     build: .
     container_name: kite_dashboard

@@ -1,3 +1,5 @@
+import asyncio
+import datetime
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -5,7 +7,8 @@ from typing import Optional
 
 import redis as redis_lib
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from kiteconnect import KiteConnect
 from pydantic import BaseModel
 
@@ -72,6 +75,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Kite Trader Platform", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://localhost:80"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class AuthRequest(BaseModel):
@@ -243,3 +254,50 @@ async def portfolio():
         "max_margin_utilisation_pct": float(os.getenv("MAX_MARGIN_UTILISATION_PCT", 0.70)) * 100,
         "strategies_running": list(_running_strategies.keys()),
     }
+
+
+def _build_ws_payload() -> dict:
+    daily_pnl = float(_redis.get("portfolio:daily_pnl") or 0)
+    margin_used_pct = float(_redis.get("portfolio:margin_used_pct") or 0)
+    total_capital = float(os.getenv("TOTAL_CAPITAL", 500000))
+    daily_loss_cap = float(os.getenv("GLOBAL_DAILY_LOSS_CAP_PCT", 0.03)) * total_capital
+
+    strategies = []
+    positions = {}
+    for name, s in _running_strategies.items():
+        open_pos = s.state.get_json("open_positions", {})
+        strategies.append({
+            "name": name,
+            "enabled": s.enabled,
+            "paper_trade": s.paper_trade,
+            "status": "running",
+            "trades_today": s.state.get_int("trades_today", 0),
+            "open_positions": len(open_pos),
+        })
+        positions[name] = open_pos
+
+    return {
+        "portfolio": {
+            "daily_pnl": round(daily_pnl, 2),
+            "daily_loss_cap": round(daily_loss_cap, 2),
+            "margin_used_pct": round(margin_used_pct * 100, 2),
+            "strategies_running": list(_running_strategies.keys()),
+        },
+        "strategies": strategies,
+        "positions": positions,
+        "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            payload = _build_ws_payload()
+            await websocket.send_json(payload)
+            await asyncio.sleep(1)
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.error("WebSocket error: %s", e)

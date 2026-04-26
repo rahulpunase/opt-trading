@@ -3,6 +3,9 @@
     "allow": [
       "Bash(docker compose *)",
       "WebFetch(domain:kite.trade)"
+    ],
+    "additionalDirectories": [
+      "/Users/rahulpunase/Desktop/opt-trading"
     ]
   }
 }

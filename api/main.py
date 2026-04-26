@@ -88,11 +88,11 @@ async def auth_login():
     return {"login_url": url}
 
 
-@app.post("/auth")
-async def auth(req: AuthRequest):
+@app.get("/auth")
+async def auth(request_token: str):
     global _data_feed
     try:
-        data = _kite.generate_session(req.request_token, api_secret=os.getenv("KITE_API_SECRET", ""))
+        data = _kite.generate_session(request_token, api_secret=os.getenv("KITE_API_SECRET", ""))
         access_token = data["access_token"]
         _kite.set_access_token(access_token)
         _redis.set("kite:access_token", access_token)

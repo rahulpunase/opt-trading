@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from alerts.telegram import send_alert
 from core.data_feed import DataFeed
 from core.event_bus import EventBus
+from core.instrument_cache import InstrumentCache
 from core.order_router import OrderRouter
 from core.risk_gate import RiskGate
 from core.state import make_redis_client
@@ -36,25 +37,31 @@ _risk_gate: RiskGate = None
 _loader: StrategyLoader = None
 _running_strategies: dict = {}
 _data_feed: DataFeed = None
+_instrument_cache: InstrumentCache = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _redis, _kite, _broker, _event_bus, _risk_gate, _loader
+    global _redis, _kite, _broker, _event_bus, _risk_gate, _loader, _instrument_cache
 
     _redis = make_redis_client()
     _kite = KiteConnect(api_key=os.getenv("KITE_API_KEY", ""))
+    _instrument_cache = InstrumentCache(_kite, _redis)
 
     stored_token = _redis.get("kite:access_token")
     if stored_token:
         _kite.set_access_token(stored_token.decode())
         logger.info("Restored access_token from Redis")
+        if _instrument_cache.is_cached():
+            logger.info("Instrument cache warm (fetched_at=%s)", _instrument_cache.fetched_at())
+        else:
+            logger.info("Instrument cache empty — will populate after /auth")
 
     paper_default = os.getenv("PAPER_TRADE_DEFAULT", "true").lower() == "true"
     _broker = OrderRouter(_kite, paper_trade=paper_default)
     _event_bus = EventBus()
     _risk_gate = RiskGate(_redis)
-    _loader = StrategyLoader(_broker, _risk_gate)
+    _loader = StrategyLoader(_broker, _risk_gate, _instrument_cache)
     _event_bus.start_scheduler()
 
     logger.info("Platform started. No strategies auto-loaded — start them via API.")
@@ -103,6 +110,16 @@ async def auth(request_token: str):
         _redis.set("kite:access_token", access_token)
         logger.info("Auth successful, user=%s", data.get("user_id", "unknown"))
 
+        # Fetch and cache all instruments — runs once per login, ~1-2s
+        try:
+            instruments_count = await asyncio.get_event_loop().run_in_executor(
+                None, _instrument_cache.fetch_and_cache
+            )
+            logger.info("Instrument cache populated: %d instruments", instruments_count)
+        except Exception as e:
+            logger.error("Instrument cache fetch failed: %s", e)
+            instruments_count = 0
+
         if _data_feed:
             _data_feed.stop()
         _data_feed = DataFeed(
@@ -118,6 +135,7 @@ async def auth(request_token: str):
             "access_token": access_token,
             "user_id": data.get("user_id"),
             "user_name": data.get("user_name"),
+            "instruments_cached": instruments_count,
             "login_url": f"https://kite.zerodha.com/connect/login?v=3&api_key={os.getenv('KITE_API_KEY', '')}",
         }
     except Exception as e:
@@ -256,6 +274,41 @@ async def get_margins():
     try:
         data = _broker.get_margins()
         return data if data else {"equity": {}, "commodity": {}}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/instruments/status")
+async def instruments_status():
+    return {
+        "cached": _instrument_cache.is_cached(),
+        "fetched_at": _instrument_cache.fetched_at(),
+    }
+
+
+@app.get("/instruments/lookup")
+async def instruments_lookup(symbol: str, exchange: str):
+    token = _instrument_cache.get_token(symbol.upper(), exchange.upper())
+    if token is None:
+        raise HTTPException(status_code=404, detail=f"{exchange.upper()}:{symbol.upper()} not found in cache")
+    detail = _instrument_cache.get_instrument(token)
+    return {"symbol": symbol.upper(), "exchange": exchange.upper(), "instrument_token": token, "detail": detail}
+
+
+@app.get("/instruments/search")
+async def instruments_search(q: str, exchange: str | None = None):
+    results = _instrument_cache.search(q, exchange)
+    return {"query": q, "exchange": exchange, "results": results}
+
+
+@app.post("/instruments/refresh")
+async def instruments_refresh():
+    """Force re-fetch instruments from Kite (e.g. after expiry rollover)."""
+    try:
+        count = await asyncio.get_event_loop().run_in_executor(
+            None, _instrument_cache.fetch_and_cache
+        )
+        return {"status": "ok", "instruments_cached": count, "fetched_at": _instrument_cache.fetched_at()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

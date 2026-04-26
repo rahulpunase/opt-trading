@@ -12,6 +12,8 @@ class BaseStrategy(ABC):
         self.name = config["name"]
         self.enabled = config.get("enabled", True)
         self.paper_trade = config.get("paper_trade", True)
+        # Populated by StrategyLoader after instrument cache lookup
+        self.instrument_tokens: list[int] = []
 
     @abstractmethod
     def on_candle(self, symbol: str, candle: dict) -> None:

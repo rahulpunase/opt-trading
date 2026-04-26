@@ -9,7 +9,13 @@
       "Bash(curl -s \"http://localhost:8000/health\")",
       "Bash(curl -s \"http://localhost:8000/auth/status\")",
       "Bash(curl -s \"http://localhost:8000/auth?request_token=HqF92IMFuT1gMuR3jx1UyX05LrLmO1E1\")",
-      "WebFetch(domain:www.kite.trade)"
+      "WebFetch(domain:www.kite.trade)",
+      "Bash(python -c ' *)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -m py_compile /Users/rahulpunase/Desktop/opt-trading/core/instrument_cache.py)",
+      "Bash(python3 -m py_compile /Users/rahulpunase/Desktop/opt-trading/core/strategy_loader.py)",
+      "Bash(python3 -m py_compile /Users/rahulpunase/Desktop/opt-trading/api/main.py)",
+      "Bash(python3 -m py_compile /Users/rahulpunase/Desktop/opt-trading/core/base_strategy.py)"
     ],
     "additionalDirectories": [
       "/Users/rahulpunase/Desktop/opt-trading"

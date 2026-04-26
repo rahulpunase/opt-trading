@@ -16,9 +16,10 @@ STRATEGIES_DIR = Path(__file__).parent.parent / "strategies"
 
 
 class StrategyLoader:
-    def __init__(self, broker, risk_gate=None):
+    def __init__(self, broker, risk_gate=None, instrument_cache=None):
         self._broker = broker
         self._risk_gate = risk_gate
+        self._instrument_cache = instrument_cache
         self._redis = make_redis_client()
         self._loaded: Dict[str, BaseStrategy] = {}
 
@@ -75,7 +76,10 @@ class StrategyLoader:
         if self._risk_gate:
             self._risk_gate.register_strategy(config["name"], strategy)
 
-        logger.info("Loader: loaded %s", config["name"])
+        # Resolve symbol names → instrument tokens and attach to the strategy
+        strategy.instrument_tokens = self._resolve_tokens(config)
+
+        logger.info("Loader: loaded %s (tokens=%s)", config["name"], strategy.instrument_tokens)
         return strategy
 
     def _load_yaml(self, path: Path) -> dict:
@@ -93,3 +97,15 @@ class StrategyLoader:
             if issubclass(obj, BaseStrategy) and obj is not BaseStrategy:
                 return obj
         return None
+
+    def _resolve_tokens(self, config: dict) -> list:
+        """
+        Resolve the strategy's `instruments` list to Kite instrument_tokens.
+        Falls back to an empty list if the cache is unavailable or a symbol is unknown.
+        """
+        if not self._instrument_cache:
+            return []
+        symbols = config.get("instruments", [])
+        exchange = config.get("exchange", "NSE")
+        tokens = self._instrument_cache.get_tokens(symbols, exchange)
+        return tokens

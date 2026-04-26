@@ -109,6 +109,4 @@ class OrderRouter:
         return self._kite.positions()
 
     def get_margins(self) -> dict:
-        if self._paper_trade:
-            return {"equity": {"net": 0}, "commodity": {"net": 0}}
         return self._kite.margins()

@@ -8,7 +8,8 @@
       "Bash(npm run *)",
       "Bash(curl -s \"http://localhost:8000/health\")",
       "Bash(curl -s \"http://localhost:8000/auth/status\")",
-      "Bash(curl -s \"http://localhost:8000/auth?request_token=HqF92IMFuT1gMuR3jx1UyX05LrLmO1E1\")"
+      "Bash(curl -s \"http://localhost:8000/auth?request_token=HqF92IMFuT1gMuR3jx1UyX05LrLmO1E1\")",
+      "WebFetch(domain:www.kite.trade)"
     ],
     "additionalDirectories": [
       "/Users/rahulpunase/Desktop/opt-trading"

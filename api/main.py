@@ -251,6 +251,15 @@ async def order_update(order: dict):
     return {"status": "ok"}
 
 
+@app.get("/margins")
+async def get_margins():
+    try:
+        data = _broker.get_margins()
+        return data if data else {"equity": {}, "commodity": {}}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}

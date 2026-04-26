@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useWs } from "@/lib/ws";
+import { api } from "@/lib/api";
 import PnlChart from "@/components/PnlChart";
 import type { Time } from "lightweight-charts";
 
@@ -29,8 +31,8 @@ function StatCard({
           positive === undefined
             ? "text-[var(--color-text-primary)]"
             : positive
-            ? "text-[var(--color-profit)]"
-            : "text-[var(--color-loss)]"
+              ? "text-[var(--color-profit)]"
+              : "text-[var(--color-loss)]"
         }`}
       >
         {value}
@@ -52,11 +54,21 @@ export default function Dashboard() {
     setPnlHistory((prev) => {
       const last = prev[prev.length - 1];
       if (last && last.time === now) return prev;
-      return [...prev.slice(-300), { time: now, value: data.portfolio.daily_pnl }];
+      return [
+        ...prev.slice(-300),
+        { time: now, value: data.portfolio.daily_pnl },
+      ];
     });
   }, [data]);
 
+  const { data: marginData } = useQuery({
+    queryKey: ["margins"],
+    queryFn: api.margins,
+    refetchInterval: 30_000,
+  });
+
   const p = data?.portfolio;
+  const eq = marginData?.equity;
   const strategies = data?.strategies ?? [];
   const runningCount = strategies.filter((s) => s.status === "running").length;
 
@@ -95,12 +107,44 @@ export default function Dashboard() {
           label="Margin Used"
           value={p ? `${p.margin_used_pct.toFixed(1)}%` : "—"}
           sub={p ? `Max: ${p.max_margin_utilisation_pct}%` : undefined}
-          positive={p ? p.margin_used_pct < p.max_margin_utilisation_pct : undefined}
+          positive={
+            p ? p.margin_used_pct < p.max_margin_utilisation_pct : undefined
+          }
         />
         <StatCard
           label="Strategies Running"
           value={String(runningCount)}
           sub={`${strategies.length} total`}
+        />
+      </div>
+
+      {/* Margin breakdown */}
+      <div>
+        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+          Margin Breakdown — Equity
+        </h2>
+        <p className="text-sm text-[var(--color-text-muted)]">
+          Live funds and utilisation from Kite
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StatCard
+          label="Net Available"
+          value={eq ? fmt(eq.net) : "—"}
+          positive={eq ? eq.net > 0 : undefined}
+        />
+        <StatCard label="Cash" value={eq ? fmt(eq.net) : "—"} />
+        <StatCard
+          label="Collateral"
+          value={eq ? fmt(eq.available?.collateral) : "—"}
+        />
+        <StatCard
+          label="SPAN Blocked"
+          value={eq ? fmt(eq.utilised?.span) : "—"}
+        />
+        <StatCard
+          label="Exposure Margin"
+          value={eq ? fmt(eq.utilised?.exposure) : "—"}
         />
       </div>
 

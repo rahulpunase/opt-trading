@@ -30,6 +30,33 @@ export interface Portfolio {
   strategies_running: string[];
 }
 
+export interface MarginSegment {
+  enabled: boolean;
+  net: number;
+  available: {
+    cash: number;
+    opening_balance: number;
+    live_balance: number;
+    adhoc_margin: number;
+    collateral: number;
+    intraday_payin: number;
+  };
+  utilised: {
+    span: number;
+    exposure: number;
+    option_premium: number;
+    m2m_realised: number;
+    m2m_unrealised: number;
+    debits: number;
+    delivery: number;
+  };
+}
+
+export interface MarginData {
+  equity?: MarginSegment;
+  commodity?: MarginSegment;
+}
+
 export interface Trade {
   time: string;
   strategy: string;
@@ -81,6 +108,8 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ name }),
     }),
+
+  margins: () => request<MarginData>("/margins"),
 
   strategyPositions: (name: string) =>
     request<{ name: string; positions: Record<string, unknown> }>(

@@ -103,6 +103,56 @@ class InstrumentCache:
             return None
         return self._data["details"].get(int(token))
 
+    def fuzzy_search(
+        self,
+        query: str,
+        exchange: str | None = None,
+        limit: int = 20,
+        score_cutoff: int = 60,
+    ) -> list[dict]:
+        """Fuzzy search across tradingsymbol and name fields using rapidfuzz."""
+        if not self._data or not query:
+            return []
+        from rapidfuzz import fuzz, process
+
+        exchanges = [exchange.upper()] if exchange else _EXCHANGES
+        candidates = []
+        for exch in exchanges:
+            for inst in self._data["by_exchange"].get(exch, []):
+                candidates.append(inst)
+
+        symbols = [c["tradingsymbol"] for c in candidates]
+        sym_hits = process.extract(
+            query.upper(), symbols, scorer=fuzz.WRatio,
+            limit=limit * 2, score_cutoff=score_cutoff,
+        )
+
+        names = [c.get("name", "") for c in candidates]
+        name_hits = process.extract(
+            query.upper(), names, scorer=fuzz.WRatio,
+            limit=limit * 2, score_cutoff=score_cutoff,
+        )
+
+        seen: set[int] = set()
+        results = []
+        for _, score, idx in sorted(sym_hits + name_hits, key=lambda x: -x[1]):
+            inst = candidates[idx]
+            token = inst["instrument_token"]
+            if token in seen:
+                continue
+            seen.add(token)
+            results.append({
+                "tradingsymbol": inst["tradingsymbol"],
+                "name": inst.get("name", ""),
+                "exchange": inst["exchange"],
+                "instrument_token": token,
+                "score": score,
+            })
+            if len(results) >= limit:
+                break
+
+        return results
+
     def search(self, query: str, exchange: str | None = None) -> list[dict]:
         """Prefix search across tradingsymbols. Returns up to 50 results."""
         if not self._data:

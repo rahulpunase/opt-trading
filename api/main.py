@@ -307,9 +307,12 @@ async def instruments_lookup(symbol: str, exchange: str):
 
 
 @app.get("/instruments/search")
-async def instruments_search(q: str, exchange: str | None = None):
-    results = _instrument_cache.search(q, exchange)
-    return {"query": q, "exchange": exchange, "results": results}
+async def instruments_search(q: str, exchange: str | None = None, fuzzy: bool = False):
+    if fuzzy:
+        results = _instrument_cache.fuzzy_search(q, exchange)
+    else:
+        results = _instrument_cache.search(q, exchange)
+    return {"query": q, "exchange": exchange, "fuzzy": fuzzy, "results": results}
 
 
 @app.post("/instruments/refresh")

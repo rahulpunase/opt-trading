@@ -16,7 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from kiteconnect import KiteConnect
 from pydantic import BaseModel
 
-from alerts.telegram import send_alert
+from alerts.telegram import send_alert, start_bot, stop_bot
 from core.data_feed import DataFeed
 from core.event_bus import EventBus
 from core.instrument_cache import InstrumentCache
@@ -91,9 +91,11 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("DataFeed could not start on startup: %s", e)
 
+    await start_bot()
     logger.info("Platform started. No strategies auto-loaded — start them via API.")
     yield
 
+    await stop_bot()
     for s in _running_strategies.values():
         try:
             s.on_stop()
@@ -404,10 +406,10 @@ async def instruments_underlyings(q: str):
     results: list[dict] = []
     seen: set[str] = set()
 
-    # NSE + BSE equities
+    # NSE + BSE equities (skip INDICES — they appear correctly as OPTIONS via NFO/BFO loop)
     for exch in ("NSE", "BSE"):
         for detail in _enrich(_instrument_cache.search(q.upper(), exch)):
-            if detail.get("instrument_type") == "EQ":
+            if detail.get("instrument_type") == "EQ" and detail.get("segment") != "INDICES":
                 sym = detail.get("tradingsymbol", "")
                 if sym and sym not in seen:
                     seen.add(sym)
@@ -486,6 +488,8 @@ async def symbol_quote(symbol: str, exchange: str = "NSE"):
 async def symbol_expiries(symbol: str, exchange: str = "NFO"):
     """Return sorted upcoming expiry dates for an underlying symbol."""
     _require_auth()
+    # Translate index tradingsymbol → F&O name+exchange (e.g. "NIFTY 50" → NFO:"NIFTY")
+    exchange, symbol = _instrument_cache.resolve_fno(symbol.upper(), exchange.upper())
     try:
         instruments = await asyncio.get_event_loop().run_in_executor(
             None, _cached_instruments, exchange
@@ -514,6 +518,8 @@ async def symbol_expiries(symbol: str, exchange: str = "NFO"):
 async def symbol_option_chain(symbol: str, expiry: str, exchange: str = "NFO"):
     """Return the full option chain for a symbol + expiry, with LTP for each leg."""
     _require_auth()
+    # Translate index tradingsymbol → F&O name+exchange (e.g. "NIFTY 50" → NFO:"NIFTY")
+    exchange, symbol = _instrument_cache.resolve_fno(symbol.upper(), exchange.upper())
 
     try:
         expiry_date = datetime.date.fromisoformat(expiry)
@@ -578,6 +584,17 @@ async def symbol_option_chain(symbol: str, expiry: str, exchange: str = "NFO"):
         "expiry": expiry,
         "chain": chain,
     }
+
+
+class TelegramTestRequest(BaseModel):
+    message: str = "🔔 Test alert from Kite Trader platform"
+
+
+@app.post("/telegram/test")
+async def telegram_test(req: TelegramTestRequest = None):
+    body = req or TelegramTestRequest()
+    ok = await send_alert(body.message)
+    return {"sent": ok}
 
 
 @app.get("/health")

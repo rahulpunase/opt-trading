@@ -305,17 +305,24 @@ function OptionChainTable({
   );
 }
 
+// Map an equity/index exchange to its F&O segment
+function toFnoExchange(exchange: string): string {
+  if (exchange === "NSE") return "NFO";
+  if (exchange === "BSE") return "BFO";
+  return exchange;
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SymbolPage() {
   const { symbol } = useParams<{ symbol: string }>();
   const [searchParams] = useSearchParams();
   const exchange = searchParams.get("exchange") ?? "NSE";
-  const instrumentType = searchParams.get("instrument_type");
+  const fnoExchange = toFnoExchange(exchange);
   const [selectedExpiry, setSelectedExpiry] = useState<string | null>(null);
 
   // Show expiry + option chain for OPTIONS or when navigating directly without a type
-  const showDerivatives = !instrumentType || instrumentType === "OPTIONS";
+  const showDerivatives = true;
 
   // Get live LTP for ATM calculation via WebSocket (same stream as QuoteSection)
   const liveTick = useSymbolQuote(symbol ?? "", exchange);
@@ -333,7 +340,7 @@ export default function SymbolPage() {
           <h2 className="mb-3 text-sm font-semibold text-text-primary">Expiries</h2>
           <ExpirySection
             symbol={symbol}
-            exchange={exchange}
+            exchange={fnoExchange}
             selected={selectedExpiry}
             onSelect={(exp) => setSelectedExpiry((prev) => (prev === exp ? null : exp))}
           />
@@ -356,7 +363,7 @@ export default function SymbolPage() {
           <OptionChainTable
             symbol={symbol}
             expiry={selectedExpiry}
-            exchange={exchange}
+            exchange={fnoExchange}
             ltp={liveTick?.tick?.ltp ?? 0}
           />
         </section>

@@ -12,6 +12,26 @@ _EXCHANGES = ["NSE", "BSE", "NFO", "BFO", "MCX", "CDS"]
 # File cache: data/instruments_YYYY-MM-DD.json (one file per trading day)
 _CACHE_DIR = Path(__file__).parent.parent / "data"
 
+# Maps "{fno_exchange}:{fno_name}" → NSE/BSE index tradingsymbol.
+# Needed because index F&O instruments use a short name (e.g. "NIFTY") that
+# differs from the INDICES segment tradingsymbol (e.g. "NIFTY 50").
+_FNO_TO_INDEX: dict[str, str] = {
+    "NFO:NIFTY":      "NIFTY 50",
+    "NFO:BANKNIFTY":  "NIFTY BANK",
+    "NFO:FINNIFTY":   "NIFTY FIN SERVICE",
+    "NFO:MIDCPNIFTY": "NIFTY MID SELECT",
+    "NFO:NIFTYNXT50": "NIFTY NEXT 50",
+    "BFO:BANKEX":     "BANKEX",
+    "BFO:SENSEX":     "SENSEX",
+    "BFO:SENSEX50":   "SENSEX50",
+}
+
+# Reverse: index tradingsymbol → (fno_exchange, fno_name)
+_INDEX_TO_FNO: dict[str, tuple[str, str]] = {
+    v: tuple(k.split(":", 1))  # type: ignore[misc]
+    for k, v in _FNO_TO_INDEX.items()
+}
+
 
 def _today_file() -> Path:
     return _CACHE_DIR / f"instruments_{datetime.date.today().isoformat()}.json"
@@ -105,6 +125,18 @@ class InstrumentCache:
         if not self._data:
             return None
         return self._data["details"].get(int(token))
+
+    def resolve_fno(self, symbol: str, exchange: str) -> tuple[str, str]:
+        """
+        Translate an index tradingsymbol to its F&O exchange + name.
+        E.g. ("NIFTY 50", "NSE") → ("NFO", "NIFTY").
+        Returns (exchange, symbol) unchanged when no mapping exists (equity case).
+        """
+        sym_upper = symbol.upper()
+        for index_ts, (fno_ex, fno_name) in _INDEX_TO_FNO.items():
+            if index_ts.upper() == sym_upper:
+                return fno_ex, fno_name
+        return exchange, symbol
 
     def fuzzy_search(
         self,
@@ -231,6 +263,7 @@ class InstrumentCache:
             "date": datetime.date.today().isoformat(),
             "fetched_at": fetched_at,
             "count": len(instruments),
+            "index_underlying_map": _FNO_TO_INDEX,
             "grouped": self._group_instruments(instruments),
         }
         tmp = path.with_suffix(".tmp")

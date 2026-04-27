@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { WsProvider } from "@/lib/ws";
+import { QuoteProvider } from "@/lib/quotes";
 import { AuthProvider } from "@/lib/auth";
 import ProtectedRoute from "@/router";
 import Layout from "@/components/Layout";
@@ -16,20 +17,22 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <WsProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
-            <Route element={<ProtectedRoute />}>
-              <Route element={<Layout />}>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/strategies" element={<Strategies />} />
-                <Route path="/positions" element={<Positions />} />
-                <Route path="/trades" element={<Trades />} />
-                <Route path="/symbol/:symbol" element={<SymbolPage />} />
+          <QuoteProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route element={<ProtectedRoute />}>
+                <Route element={<Layout />}>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/strategies" element={<Strategies />} />
+                  <Route path="/positions" element={<Positions />} />
+                  <Route path="/trades" element={<Trades />} />
+                  <Route path="/symbol/:symbol" element={<SymbolPage />} />
+                </Route>
               </Route>
-            </Route>
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </QuoteProvider>
         </WsProvider>
       </AuthProvider>
     </BrowserRouter>

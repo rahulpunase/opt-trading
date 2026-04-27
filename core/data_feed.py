@@ -23,6 +23,7 @@ class DataFeed:
         self._access_token = access_token
         self._event_bus = event_bus
         self._tokens = list(instrument_tokens)
+        self._strategy_tokens: set[int] = set(instrument_tokens)  # never unsubscribed by UI
         self._ticker: KiteTicker = None
         self._loop = None
         self._candles: dict = defaultdict(lambda: defaultdict(dict))
@@ -69,16 +70,20 @@ class DataFeed:
         logger.info("DataFeed: add_subscription token=%d symbol=%s refcount=%d", token, symbol, self._dynamic_refcount[token])
 
     def remove_subscription(self, token: int) -> None:
-        """Decrement refcount; unsubscribe from KiteTicker when no consumers remain."""
+        """Decrement refcount; unsubscribe from KiteTicker when no consumers remain.
+        Tokens owned by strategies at startup are never unsubscribed."""
         count = self._dynamic_refcount.get(token, 0) - 1
         if count <= 0:
             self._dynamic_refcount.pop(token, None)
-            if token in self._tokens:
-                self._tokens.remove(token)
-                self._token_to_symbol.pop(token, None)
-            if self._is_connected():
-                self._ticker.unsubscribe([token])
-            logger.info("DataFeed: remove_subscription token=%d (unsubscribed)", token)
+            if token not in self._strategy_tokens:
+                if token in self._tokens:
+                    self._tokens.remove(token)
+                    self._token_to_symbol.pop(token, None)
+                if self._is_connected():
+                    self._ticker.unsubscribe([token])
+                logger.info("DataFeed: remove_subscription token=%d (unsubscribed)", token)
+            else:
+                logger.info("DataFeed: remove_subscription token=%d (strategy-owned, kept active)", token)
         else:
             self._dynamic_refcount[token] = count
             logger.info("DataFeed: remove_subscription token=%d refcount=%d (still active)", token, count)

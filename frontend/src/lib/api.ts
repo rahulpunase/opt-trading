@@ -77,6 +77,7 @@ export interface Underlying {
 export interface SymbolQuote {
   symbol: string;
   exchange: string;
+  instrument_token: number | null;
   ltp: number;
   open: number;
   high: number;

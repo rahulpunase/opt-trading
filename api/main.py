@@ -462,9 +462,11 @@ async def symbol_quote(symbol: str, exchange: str = "NSE"):
         prev_close = ohlc.get("close", ltp) or ltp
         change = round(ltp - prev_close, 2)
         change_pct = round(change / prev_close * 100, 2) if prev_close else 0.0
+        instrument_token = _instrument_cache.get_token(sym, ex) if _instrument_cache else None
         return {
             "symbol": sym,
             "exchange": ex,
+            "instrument_token": instrument_token,
             "ltp": ltp,
             "open": ohlc.get("open", 0.0),
             "high": ohlc.get("high", 0.0),
@@ -645,52 +647,61 @@ async def websocket_endpoint(websocket: WebSocket):
         logger.error("WebSocket error: %s", e)
 
 
-@app.websocket("/ws/quote/{symbol}")
-async def ws_quote(websocket: WebSocket, symbol: str, exchange: str = "NSE"):
-    """Stream real-time ticks for a symbol via KiteTicker."""
+@app.websocket("/ws/quotes")
+async def ws_quotes(websocket: WebSocket):
+    """Multiplexed real-time tick stream. Client sends subscribe/unsubscribe JSON messages."""
     await websocket.accept()
 
-    symbol = symbol.upper()
-    exchange = exchange.upper()
-
-    if not _instrument_cache or not _data_feed or not _event_bus:
+    if not _data_feed or not _event_bus:
         await websocket.send_json({"error": "Platform not authenticated yet"})
         await websocket.close()
         return
 
-    token = _instrument_cache.get_token(symbol, exchange)
-    if not token:
-        await websocket.send_json({"error": f"Unknown symbol {symbol}/{exchange}"})
-        await websocket.close()
-        return
-
-    key = f"ws_quote_{id(websocket)}"
+    key = f"ws_quotes_{id(websocket)}"
+    subscribed_tokens: set[int] = set()
+    token_to_symbol: dict[int, str] = {}
     loop = asyncio.get_event_loop()
 
     def on_tick(tick: dict):
+        token = tick.get("instrument_token")
         ts = tick.get("timestamp")
-        ts_str = ts.isoformat() if hasattr(ts, "isoformat") else str(ts or "")
         asyncio.run_coroutine_threadsafe(
             websocket.send_json({
+                "token": token,
                 "ltp": tick.get("last_price"),
                 "volume": tick.get("volume"),
-                "timestamp": ts_str,
+                "timestamp": ts.isoformat() if hasattr(ts, "isoformat") else str(ts or ""),
             }),
             loop,
         )
 
-    _data_feed.add_subscription(token, symbol)
-    _event_bus.register_quote_subscriber(key, {token}, on_tick)
-    logger.info("ws_quote: client connected for %s/%s token=%d", symbol, exchange, token)
+    _event_bus.register_quote_subscriber(key, subscribed_tokens, on_tick)
+    logger.info("ws_quotes: client connected key=%s", key)
 
     try:
         while True:
-            await websocket.receive_text()  # keep-alive; client sends periodic ping
+            msg = await websocket.receive_json()
+            action = msg.get("action")
+            token = msg.get("token")
+            if not isinstance(token, int):
+                continue
+            if action == "subscribe" and token not in subscribed_tokens:
+                symbol = str(msg.get("symbol", token))
+                subscribed_tokens.add(token)
+                token_to_symbol[token] = symbol
+                _data_feed.add_subscription(token, symbol)
+                logger.debug("ws_quotes: subscribed token=%d symbol=%s", token, symbol)
+            elif action == "unsubscribe" and token in subscribed_tokens:
+                subscribed_tokens.discard(token)
+                sym = token_to_symbol.pop(token, str(token))
+                _data_feed.remove_subscription(token)
+                logger.debug("ws_quotes: unsubscribed token=%d symbol=%s", token, sym)
     except WebSocketDisconnect:
         pass
     except Exception as e:
-        logger.debug("ws_quote: connection closed for %s: %s", symbol, e)
+        logger.debug("ws_quotes: connection closed key=%s: %s", key, e)
     finally:
+        for token in list(subscribed_tokens):
+            _data_feed.remove_subscription(token)
         _event_bus.unregister_quote_subscriber(key)
-        _data_feed.remove_subscription(token)
-        logger.info("ws_quote: client disconnected for %s/%s", symbol, exchange)
+        logger.info("ws_quotes: client disconnected key=%s", key)

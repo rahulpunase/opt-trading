@@ -51,7 +51,10 @@ class InstrumentCache:
             logger.info("Loading instruments from file cache: %s", today_file)
             with open(today_file) as f:
                 payload = json.load(f)
-            instruments = payload["instruments"]
+            if "grouped" in payload:
+                instruments = self._flatten_grouped(payload["grouped"])
+            else:
+                instruments = payload["instruments"]  # old-format backward compat
             fetched_at = payload.get("fetched_at", datetime.datetime.now(_IST).isoformat())
             logger.info("Loaded %d instruments from file cache", len(instruments))
         else:
@@ -228,13 +231,40 @@ class InstrumentCache:
             "date": datetime.date.today().isoformat(),
             "fetched_at": fetched_at,
             "count": len(instruments),
-            "instruments": instruments,
+            "grouped": self._group_instruments(instruments),
         }
         tmp = path.with_suffix(".tmp")
         with open(tmp, "w") as f:
             json.dump(payload, f, separators=(",", ":"))
         tmp.rename(path)
         logger.info("Wrote instrument cache to %s (%d instruments)", path.name, len(instruments))
+
+    def _group_instruments(self, instruments: list[dict]) -> dict:
+        """Group a flat instrument list by segment → name → instrument_type, sorted by expiry/strike."""
+        grouped: dict[str, dict[str, dict[str, list]]] = {}
+        for inst in instruments:
+            seg = inst.get("segment", "UNKNOWN")
+            name = inst.get("name", "") or inst.get("tradingsymbol", "")
+            itype = inst.get("instrument_type", "")
+            grouped.setdefault(seg, {}).setdefault(name, {}).setdefault(itype, []).append(inst)
+
+        for seg in grouped:
+            for name in grouped[seg]:
+                for itype, lst in grouped[seg][name].items():
+                    grouped[seg][name][itype] = sorted(
+                        lst,
+                        key=lambda x: (x.get("expiry") or "", x.get("strike", 0)),
+                    )
+        return grouped
+
+    def _flatten_grouped(self, grouped: dict) -> list[dict]:
+        """Reconstruct a flat instrument list from the grouped file structure."""
+        out = []
+        for names in grouped.values():
+            for itypes in names.values():
+                for lst in itypes.values():
+                    out.extend(lst)
+        return out
 
     def _cleanup_old_files(self, keep: Path) -> None:
         """Delete instrument JSON files from previous days."""

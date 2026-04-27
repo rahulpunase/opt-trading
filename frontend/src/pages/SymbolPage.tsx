@@ -311,7 +311,11 @@ export default function SymbolPage() {
   const { symbol } = useParams<{ symbol: string }>();
   const [searchParams] = useSearchParams();
   const exchange = searchParams.get("exchange") ?? "NSE";
+  const instrumentType = searchParams.get("instrument_type");
   const [selectedExpiry, setSelectedExpiry] = useState<string | null>(null);
+
+  // Show expiry + option chain for OPTIONS or when navigating directly without a type
+  const showDerivatives = !instrumentType || instrumentType === "OPTIONS";
 
   // Get live LTP for ATM calculation via WebSocket (same stream as QuoteSection)
   const liveTick = useSymbolQuote(symbol ?? "", exchange);
@@ -323,21 +327,23 @@ export default function SymbolPage() {
       {/* Quote */}
       <QuoteSection symbol={symbol} exchange={exchange} />
 
-      {/* Expiries */}
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">Expiries</h2>
-        <ExpirySection
-          symbol={symbol}
-          exchange={exchange}
-          selected={selectedExpiry}
-          onSelect={(exp) => setSelectedExpiry((prev) => (prev === exp ? null : exp))}
-        />
-      </section>
-
-      {/* Option Chain */}
-      {selectedExpiry && (
+      {/* Expiries — only for OPTIONS underlyings */}
+      {showDerivatives && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-[var(--color-text-primary)]">
+          <h2 className="mb-3 text-sm font-semibold text-text-primary">Expiries</h2>
+          <ExpirySection
+            symbol={symbol}
+            exchange={exchange}
+            selected={selectedExpiry}
+            onSelect={(exp) => setSelectedExpiry((prev) => (prev === exp ? null : exp))}
+          />
+        </section>
+      )}
+
+      {/* Option Chain — only for OPTIONS underlyings */}
+      {showDerivatives && selectedExpiry && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-text-primary">
             Option Chain —{" "}
             <span className="text-[var(--color-accent)]">
               {new Date(selectedExpiry + "T00:00:00").toLocaleDateString("en-IN", {
@@ -351,7 +357,7 @@ export default function SymbolPage() {
             symbol={symbol}
             expiry={selectedExpiry}
             exchange={exchange}
-            ltp={liveTick?.ltp ?? 0}
+            ltp={liveTick?.tick?.ltp ?? 0}
           />
         </section>
       )}

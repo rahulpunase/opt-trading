@@ -12,6 +12,22 @@ function useDebounce(value: string, delay: number) {
   return debounced;
 }
 
+const TYPE_STYLES: Record<string, string> = {
+  EQ: "bg-emerald-500/15 text-emerald-400",
+  FUT: "bg-blue-500/15 text-blue-400",
+  OPTIONS: "bg-orange-500/15 text-orange-400",
+};
+
+function TypeBadge({ type }: { type: string }) {
+  return (
+    <span
+      className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${TYPE_STYLES[type] ?? "bg-bg-elevated text-text-muted"}`}
+    >
+      {type}
+    </span>
+  );
+}
+
 export default function SearchBar() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Underlying[]>([]);
@@ -56,7 +72,9 @@ export default function SearchBar() {
   }, []);
 
   function handleSelect(item: Underlying) {
-    navigate(`/symbol/${encodeURIComponent(item.symbol)}?exchange=${item.exchange}`);
+    navigate(
+      `/symbol/${encodeURIComponent(item.symbol)}?exchange=${item.exchange}&instrument_type=${item.instrument_type}`
+    );
     setQuery("");
     setOpen(false);
     setResults([]);
@@ -99,7 +117,7 @@ export default function SearchBar() {
     return (
       <ul>
         {results.map((item, idx) => (
-          <li key={`${item.exchange}:${item.symbol}`}>
+          <li key={`${item.exchange}:${item.symbol}:${item.instrument_type}`}>
             <button
               onMouseDown={() => handleSelect(item)}
               onMouseEnter={() => setActiveIdx(idx)}
@@ -110,8 +128,11 @@ export default function SearchBar() {
               }`}
             >
               <span className="font-medium">{item.symbol}</span>
-              <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)]">
-                {item.exchange}
+              <span className="flex items-center gap-1">
+                <TypeBadge type={item.instrument_type} />
+                <span className="rounded px-1.5 py-0.5 text-[10px] font-medium bg-bg-elevated text-text-muted">
+                  {item.exchange}
+                </span>
               </span>
             </button>
           </li>

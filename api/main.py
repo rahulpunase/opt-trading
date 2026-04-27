@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import heapq
 import logging
 import os
 from contextlib import asynccontextmanager
@@ -39,6 +40,12 @@ _loader: StrategyLoader = None
 _running_strategies: dict = {}
 _data_feed: DataFeed = None
 _instrument_cache: InstrumentCache = None
+
+# Nearest F&O expiries to return for /symbol/.../expiries
+MAX_SYMBOL_EXPIRIES = 5
+
+# Option chain rows: strikes within this many steps above/below ATM (inclusive of ATM → up to 51 rows)
+MAX_OPTION_CHAIN_STRIKES_EACH_SIDE = 25
 
 
 @asynccontextmanager
@@ -378,6 +385,29 @@ def _cached_instruments(exchange: str) -> list:
     return _kite_instruments_cache[ex]
 
 
+def _underlying_spot_ltp(sym: str, fno_exchange: str) -> float:
+    """Best-effort underlying last price for ATM selection (mirrors /symbol/quote exchange fallbacks)."""
+    sym = sym.upper()
+    ex = fno_exchange.upper()
+    order = [ex]
+    if ex == "NFO":
+        order.append("NSE")
+    elif ex == "BFO":
+        order.append("BSE")
+    for ex_try in order:
+        try:
+            key = f"{ex_try}:{sym}"
+            data = _kite.quote([key])
+            q = data.get(key)
+            if q:
+                lp = q.get("last_price") or 0.0
+                if lp > 0:
+                    return float(lp)
+        except Exception:
+            continue
+    return 0.0
+
+
 @app.get("/instruments/underlyings")
 async def instruments_underlyings(q: str):
     """Return unique underlying names matching the query (for search bar autocomplete)."""
@@ -486,7 +516,11 @@ async def symbol_quote(symbol: str, exchange: str = "NSE"):
 
 @app.get("/symbol/{symbol}/expiries")
 async def symbol_expiries(symbol: str, exchange: str = "NFO"):
-    """Return sorted upcoming expiry dates for an underlying symbol."""
+    """Return the nearest upcoming expiry dates (at most MAX_SYMBOL_EXPIRIES) for an underlying.
+
+    Traverses instruments once, keeping only the k smallest unique future expiries via a
+    bounded heap; does not build or sort the full distinct-expiry set.
+    """
     _require_auth()
     # Translate index tradingsymbol → F&O name+exchange (e.g. "NIFTY 50" → NFO:"NIFTY")
     exchange, symbol = _instrument_cache.resolve_fno(symbol.upper(), exchange.upper())
@@ -498,25 +532,42 @@ async def symbol_expiries(symbol: str, exchange: str = "NFO"):
         raise HTTPException(status_code=503, detail=str(e))
 
     today = datetime.date.today()
-    expiry_set: set[datetime.date] = set()
+    sym_u = symbol.upper()
+    k = MAX_SYMBOL_EXPIRIES
+    seen: set[datetime.date] = set()
+    # min-heap of -ordinal: heap[0] is -max(seen) among kept expiries
+    worst_heap: list[int] = []
+
     for inst in instruments:
-        if (
-            inst.get("name", "").upper() == symbol.upper()
-            and inst.get("expiry")
-            and inst["expiry"] >= today
-        ):
-            expiry_set.add(inst["expiry"])
+        if inst.get("name", "").upper() != sym_u:
+            continue
+        d = inst.get("expiry")
+        if not d or d < today:
+            continue
+        if d in seen:
+            continue
+        o = d.toordinal()
+        if len(seen) < k:
+            seen.add(d)
+            heapq.heappush(worst_heap, -o)
+        elif o < -worst_heap[0]:
+            popped = heapq.heappop(worst_heap)
+            old = datetime.date.fromordinal(-popped)
+            seen.remove(old)
+            seen.add(d)
+            heapq.heappush(worst_heap, -o)
 
     return {
-        "symbol": symbol.upper(),
+        "symbol": sym_u,
         "exchange": exchange.upper(),
-        "expiries": [e.isoformat() for e in sorted(expiry_set)],
+        "expiries": [e.isoformat() for e in sorted(seen)],
     }
 
 
 @app.get("/symbol/{symbol}/option-chain")
 async def symbol_option_chain(symbol: str, expiry: str, exchange: str = "NFO"):
-    """Return the full option chain for a symbol + expiry, with LTP for each leg."""
+    """Return option chain rows near ATM: at most MAX_OPTION_CHAIN_STRIKES_EACH_SIDE strikes
+    below and above ATM (ATM row included), with LTP per leg when available."""
     _require_auth()
     # Translate index tradingsymbol → F&O name+exchange (e.g. "NIFTY 50" → NFO:"NIFTY")
     exchange, symbol = _instrument_cache.resolve_fno(symbol.upper(), exchange.upper())
@@ -546,7 +597,7 @@ async def symbol_option_chain(symbol: str, expiry: str, exchange: str = "NFO"):
             detail=f"No option chain found for {symbol.upper()} expiry {expiry}",
         )
 
-    # Build strike map
+    # Build strike map (full expiry first, then narrow to ATM window before LTP batch)
     strikes: dict[float, dict] = {}
     for inst in chain_insts:
         strike = inst["strike"]
@@ -558,6 +609,23 @@ async def symbol_option_chain(symbol: str, expiry: str, exchange: str = "NFO"):
             "lot_size": inst["lot_size"],
             "ltp": 0.0,
         }
+
+    sorted_strikes = sorted(strikes.keys())
+    half = MAX_OPTION_CHAIN_STRIKES_EACH_SIDE
+    spot = _underlying_spot_ltp(symbol, exchange)
+    if spot > 0:
+        atm_strike = min(sorted_strikes, key=lambda s: abs(s - spot))
+        atm_i = sorted_strikes.index(atm_strike)
+    else:
+        atm_i = len(sorted_strikes) // 2
+
+    lo = max(0, atm_i - half)
+    hi = min(len(sorted_strikes), atm_i + half + 1)
+    window_strikes = sorted_strikes[lo:hi]
+    strike_keep = frozenset(window_strikes)
+
+    strikes = {k: strikes[k] for k in window_strikes}
+    chain_insts = [inst for inst in chain_insts if inst["strike"] in strike_keep]
 
     # Batch LTP fetch — failure is non-fatal, chain still renders
     try:

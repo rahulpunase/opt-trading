@@ -16,12 +16,17 @@ STRATEGIES_DIR = Path(__file__).parent.parent / "strategies"
 
 
 class StrategyLoader:
-    def __init__(self, broker, risk_gate=None, instrument_cache=None):
+    def __init__(self, broker, risk_gate=None, instrument_cache=None, data_feed=None):
         self._broker = broker
         self._risk_gate = risk_gate
         self._instrument_cache = instrument_cache
+        self._data_feed = data_feed
         self._redis = make_redis_client()
         self._loaded: Dict[str, BaseStrategy] = {}
+
+    def set_data_feed(self, data_feed) -> None:
+        """Called after /auth when DataFeed is started — injected into all subsequently loaded strategies."""
+        self._data_feed = data_feed
 
     def load_all(self) -> List[BaseStrategy]:
         strategies = []
@@ -75,6 +80,10 @@ class StrategyLoader:
         self._loaded[config["name"]] = strategy
         if self._risk_gate:
             self._risk_gate.register_strategy(config["name"], strategy)
+
+        # Inject shared infrastructure so strategies can call subscribe_instrument()
+        strategy._data_feed = self._data_feed
+        strategy._instrument_cache = self._instrument_cache
 
         # Resolve symbol names → instrument tokens and attach to the strategy
         strategy.instrument_tokens = self._resolve_tokens(config)

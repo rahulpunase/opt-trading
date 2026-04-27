@@ -43,7 +43,7 @@ _instrument_cache: InstrumentCache = None
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _redis, _kite, _broker, _event_bus, _risk_gate, _loader, _instrument_cache
+    global _redis, _kite, _broker, _event_bus, _risk_gate, _loader, _instrument_cache, _data_feed
 
     _redis = make_redis_client()
     _kite = KiteConnect(api_key=os.getenv("KITE_API_KEY", ""))
@@ -51,7 +51,8 @@ async def lifespan(app: FastAPI):
 
     stored_token = _redis.get("kite:access_token")
     if stored_token:
-        _kite.set_access_token(stored_token.decode())
+        access_token = stored_token.decode()
+        _kite.set_access_token(access_token)
         logger.info("Restored access_token from Redis")
 
     # Warm Redis from today's file cache on startup (survives Redis restarts without re-auth)
@@ -74,6 +75,21 @@ async def lifespan(app: FastAPI):
     _risk_gate = RiskGate(_redis)
     _loader = StrategyLoader(_broker, _risk_gate, _instrument_cache)
     _event_bus.start_scheduler()
+
+    # If we already have a valid access token, start the ticker immediately
+    if stored_token:
+        try:
+            _data_feed = DataFeed(
+                api_key=os.getenv("KITE_API_KEY", ""),
+                access_token=access_token,
+                event_bus=_event_bus,
+                instrument_tokens=[],
+            )
+            _data_feed.start()
+            _loader.set_data_feed(_data_feed)
+            logger.info("DataFeed started from restored access_token")
+        except Exception as e:
+            logger.warning("DataFeed could not start on startup: %s", e)
 
     logger.info("Platform started. No strategies auto-loaded — start them via API.")
     yield
@@ -140,6 +156,7 @@ async def auth(request_token: str):
             instrument_tokens=[],
         )
         _data_feed.start()
+        _loader.set_data_feed(_data_feed)
 
         return {
             "status": "ok",
@@ -626,3 +643,54 @@ async def websocket_endpoint(websocket: WebSocket):
         pass
     except Exception as e:
         logger.error("WebSocket error: %s", e)
+
+
+@app.websocket("/ws/quote/{symbol}")
+async def ws_quote(websocket: WebSocket, symbol: str, exchange: str = "NSE"):
+    """Stream real-time ticks for a symbol via KiteTicker."""
+    await websocket.accept()
+
+    symbol = symbol.upper()
+    exchange = exchange.upper()
+
+    if not _instrument_cache or not _data_feed or not _event_bus:
+        await websocket.send_json({"error": "Platform not authenticated yet"})
+        await websocket.close()
+        return
+
+    token = _instrument_cache.get_token(symbol, exchange)
+    if not token:
+        await websocket.send_json({"error": f"Unknown symbol {symbol}/{exchange}"})
+        await websocket.close()
+        return
+
+    key = f"ws_quote_{id(websocket)}"
+    loop = asyncio.get_event_loop()
+
+    def on_tick(tick: dict):
+        ts = tick.get("timestamp")
+        ts_str = ts.isoformat() if hasattr(ts, "isoformat") else str(ts or "")
+        asyncio.run_coroutine_threadsafe(
+            websocket.send_json({
+                "ltp": tick.get("last_price"),
+                "volume": tick.get("volume"),
+                "timestamp": ts_str,
+            }),
+            loop,
+        )
+
+    _data_feed.add_subscription(token, symbol)
+    _event_bus.register_quote_subscriber(key, {token}, on_tick)
+    logger.info("ws_quote: client connected for %s/%s token=%d", symbol, exchange, token)
+
+    try:
+        while True:
+            await websocket.receive_text()  # keep-alive; client sends periodic ping
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.debug("ws_quote: connection closed for %s: %s", symbol, e)
+    finally:
+        _event_bus.unregister_quote_subscriber(key)
+        _data_feed.remove_subscription(token)
+        logger.info("ws_quote: client disconnected for %s/%s", symbol, exchange)

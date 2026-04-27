@@ -14,6 +14,9 @@ class BaseStrategy(ABC):
         self.paper_trade = config.get("paper_trade", True)
         # Populated by StrategyLoader after instrument cache lookup
         self.instrument_tokens: list[int] = []
+        # Injected by StrategyLoader — used by subscribe_instrument()
+        self._data_feed = None
+        self._instrument_cache = None
 
     @abstractmethod
     def on_candle(self, symbol: str, candle: dict) -> None:
@@ -66,3 +69,15 @@ class BaseStrategy(ABC):
 
     def get_capital_allocation(self) -> float:
         return self.config.get("capital_allocation", 0.10)
+
+    def subscribe_instrument(self, symbol: str, exchange: str) -> None:
+        """Subscribe to an instrument beyond the YAML instruments list. Call from on_start()."""
+        if self._data_feed is None or self._instrument_cache is None:
+            self.logger.warning("subscribe_instrument: data_feed not injected yet")
+            return
+        token = self._instrument_cache.get_token(symbol, exchange)
+        if token:
+            self._data_feed.add_subscription(token, symbol)
+            self.logger.info("subscribe_instrument: %s/%s token=%d", symbol, exchange, token)
+        else:
+            self.logger.warning("subscribe_instrument: cannot resolve token for %s/%s", symbol, exchange)

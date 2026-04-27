@@ -3,16 +3,21 @@ import { useParams, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { OptionChainRow } from "@/lib/api";
+import { useSymbolQuote } from "@/hooks/useSymbolQuote";
 
 // ─── Quote Section ────────────────────────────────────────────────────────────
 
 function QuoteSection({ symbol, exchange }: { symbol: string; exchange: string }) {
+  // Initial REST call for OHLC/change data (day-level, not tick-rate)
   const { data, isLoading, error } = useQuery({
     queryKey: ["symbolQuote", symbol, exchange],
     queryFn: () => api.symbolQuote(symbol, exchange),
-    refetchInterval: 5000,
+    refetchInterval: false,
     retry: false,
   });
+
+  // Real-time LTP + volume via KiteTicker WebSocket
+  const { tick: liveTick, error: wsError } = useSymbolQuote(symbol, exchange);
 
   if (isLoading) {
     return (
@@ -45,22 +50,38 @@ function QuoteSection({ symbol, exchange }: { symbol: string; exchange: string }
 
   if (!data) return null;
 
-  const isUp = data.change_pct >= 0;
+  const isNotAuth = wsError?.toLowerCase().includes("authenticated");
+
+  // Prefer live WebSocket tick for LTP and volume; fall back to REST snapshot
+  const ltp = liveTick?.ltp ?? data.ltp;
+  const volume = liveTick?.volume ?? data.volume;
+
+  // Recompute change relative to prev close using live LTP
+  const change = ltp - data.close;
+  const changePct = data.close !== 0 ? (change / data.close) * 100 : data.change_pct;
+  const isUp = changePct >= 0;
   const changeColor = isUp ? "var(--color-profit)" : "var(--color-loss)";
 
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs text-[var(--color-text-muted)]">{data.exchange}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-[var(--color-text-muted)]">{data.exchange}</p>
+            {isNotAuth ? (
+              <span className="text-[10px] text-[var(--color-text-muted)]">● Login to Kite for live feed</span>
+            ) : liveTick ? (
+              <span className="text-[10px] text-[var(--color-profit)]">● Live</span>
+            ) : null}
+          </div>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{data.symbol}</h1>
         </div>
         <div className="text-right">
           <p className="text-3xl font-semibold tabular-nums text-[var(--color-text-primary)]">
-            ₹{data.ltp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+            ₹{ltp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </p>
           <p className="text-sm tabular-nums" style={{ color: changeColor }}>
-            {isUp ? "▲" : "▼"} {Math.abs(data.change).toFixed(2)} ({Math.abs(data.change_pct).toFixed(2)}%)
+            {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(2)} ({Math.abs(changePct).toFixed(2)}%)
           </p>
         </div>
       </div>
@@ -70,7 +91,7 @@ function QuoteSection({ symbol, exchange }: { symbol: string; exchange: string }
           { label: "High", value: data.high },
           { label: "Low", value: data.low },
           { label: "Prev Close", value: data.close },
-          { label: "Volume", value: null, raw: data.volume.toLocaleString("en-IN") },
+          { label: "Volume", value: null, raw: volume.toLocaleString("en-IN") },
         ].map(({ label, value, raw }) => (
           <div key={label}>
             <p className="text-[10px] text-[var(--color-text-muted)]">{label}</p>
@@ -292,14 +313,8 @@ export default function SymbolPage() {
   const exchange = searchParams.get("exchange") ?? "NSE";
   const [selectedExpiry, setSelectedExpiry] = useState<string | null>(null);
 
-  // Get LTP from quote for ATM calculation
-  const { data: quoteData } = useQuery({
-    queryKey: ["symbolQuote", symbol, exchange],
-    queryFn: () => api.symbolQuote(symbol!, exchange),
-    enabled: !!symbol,
-    refetchInterval: 5000,
-    retry: false,
-  });
+  // Get live LTP for ATM calculation via WebSocket (same stream as QuoteSection)
+  const liveTick = useSymbolQuote(symbol ?? "", exchange);
 
   if (!symbol) return null;
 
@@ -336,7 +351,7 @@ export default function SymbolPage() {
             symbol={symbol}
             expiry={selectedExpiry}
             exchange={exchange}
-            ltp={quoteData?.ltp ?? 0}
+            ltp={liveTick?.ltp ?? 0}
           />
         </section>
       )}

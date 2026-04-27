@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Dict, List
+from typing import Callable, Dict, List
 from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
@@ -13,6 +13,16 @@ class EventBus:
     def __init__(self):
         self._strategies: Dict[str, object] = {}
         self._scheduler = AsyncIOScheduler(timezone=IST)
+        # key → (tokens_filter, callback); empty tokens set means all tokens
+        self._quote_subscribers: Dict[str, tuple[set[int], Callable]] = {}
+
+    def register_quote_subscriber(self, key: str, tokens: set[int], callback: Callable) -> None:
+        self._quote_subscribers[key] = (tokens, callback)
+        logger.info("EventBus: registered quote subscriber %s tokens=%s", key, tokens)
+
+    def unregister_quote_subscriber(self, key: str) -> None:
+        self._quote_subscribers.pop(key, None)
+        logger.info("EventBus: unregistered quote subscriber %s", key)
 
     def register(self, strategy):
         self._strategies[strategy.name] = strategy
@@ -42,6 +52,15 @@ class EventBus:
         tasks = [self._safe_on_tick(s, tick) for s in self._strategies.values()]
         if tasks:
             await asyncio.gather(*tasks)
+
+        # Route to non-strategy quote subscribers (e.g. WebSocket clients)
+        token = tick.get("instrument_token")
+        for key, (tokens, cb) in list(self._quote_subscribers.items()):
+            if not tokens or token in tokens:
+                try:
+                    cb(tick)
+                except Exception as e:
+                    logger.debug("EventBus: quote subscriber %s error: %s", key, e)
 
     async def emit_order_update(self, order: dict):
         tasks = []

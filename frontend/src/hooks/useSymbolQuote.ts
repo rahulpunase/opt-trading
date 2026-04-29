@@ -1,6 +1,4 @@
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
 import { useQuoteContext, type SymbolQuoteTick } from "@/lib/quotes";
 
 export interface SymbolQuoteResult {
@@ -8,28 +6,17 @@ export interface SymbolQuoteResult {
   error: string | null;
 }
 
-export function useSymbolQuote(symbol: string, exchange: string): SymbolQuoteResult {
+export function useSymbolQuote(instrumentToken: number, label?: string): SymbolQuoteResult {
   const { ticks, subscribe, unsubscribe, wsError } = useQuoteContext();
 
-  // Reuse the same query key as QuoteSection — React Query deduplicates the request
-  const { data } = useQuery({
-    queryKey: ["symbolQuote", symbol, exchange],
-    queryFn: () => api.symbolQuote(symbol, exchange),
-    refetchInterval: false,
-    retry: false,
-    enabled: !!symbol && !!exchange,
-  });
-
-  const token = data?.instrument_token ?? null;
-
   useEffect(() => {
-    if (!token) return;
-    subscribe(token, symbol);
-    return () => unsubscribe(token);
-  }, [token, symbol, subscribe, unsubscribe]);
+    if (!instrumentToken) return;
+    subscribe(instrumentToken, label ?? String(instrumentToken));
+    return () => unsubscribe(instrumentToken);
+  }, [instrumentToken, label, subscribe, unsubscribe]);
 
   return {
-    tick: token != null ? (ticks.get(token) ?? null) : null,
+    tick: instrumentToken ? (ticks.get(instrumentToken) ?? null) : null,
     error: wsError,
   };
 }

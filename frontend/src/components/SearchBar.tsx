@@ -15,7 +15,7 @@ function useDebounce(value: string, delay: number) {
 const TYPE_STYLES: Record<string, string> = {
   EQ: "bg-emerald-500/15 text-emerald-400",
   FUT: "bg-blue-500/15 text-blue-400",
-  OPTIONS: "bg-orange-500/15 text-orange-400",
+  INDICES: "bg-purple-500/15 text-purple-400",
 };
 
 function TypeBadge({ type }: { type: string }) {
@@ -72,9 +72,7 @@ export default function SearchBar() {
   }, []);
 
   function handleSelect(item: Underlying) {
-    navigate(
-      `/symbol/${encodeURIComponent(item.symbol)}?exchange=${item.exchange}&instrument_type=${item.instrument_type}`
-    );
+    navigate(`/symbol/${item.instrument_token}`);
     setQuery("");
     setOpen(false);
     setResults([]);
@@ -117,7 +115,7 @@ export default function SearchBar() {
     return (
       <ul>
         {results.map((item, idx) => (
-          <li key={`${item.exchange}:${item.symbol}:${item.instrument_type}`}>
+          <li key={item.instrument_token}>
             <button
               onMouseDown={() => handleSelect(item)}
               onMouseEnter={() => setActiveIdx(idx)}

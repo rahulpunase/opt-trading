@@ -41,7 +41,7 @@ _running_strategies: dict = {}
 _data_feed: DataFeed = None
 _instrument_cache: InstrumentCache = None
 
-# Nearest F&O expiries to return for /symbol/.../expiries
+# Nearest F&O expiries to return for /instruments/{token}/expiries
 MAX_SYMBOL_EXPIRIES = 5
 
 # Option chain rows: strikes within this many steps above/below ATM (inclusive of ATM → up to 51 rows)
@@ -385,26 +385,33 @@ def _cached_instruments(exchange: str) -> list:
     return _kite_instruments_cache[ex]
 
 
-def _underlying_spot_ltp(sym: str, fno_exchange: str) -> float:
-    """Best-effort underlying last price for ATM selection (mirrors /symbol/quote exchange fallbacks)."""
-    sym = sym.upper()
-    ex = fno_exchange.upper()
-    order = [ex]
-    if ex == "NFO":
-        order.append("NSE")
-    elif ex == "BFO":
-        order.append("BSE")
-    for ex_try in order:
-        try:
-            key = f"{ex_try}:{sym}"
-            data = _kite.quote([key])
-            q = data.get(key)
-            if q:
-                lp = q.get("last_price") or 0.0
-                if lp > 0:
-                    return float(lp)
-        except Exception:
-            continue
+def _resolve_fno_underlying(inst: dict) -> tuple[str, str]:
+    """Resolve a cached instrument to (fno_exchange, fno_underlying_name) for expiry / option-chain lookup.
+
+    - Index tradingsymbols ("NIFTY 50") use the explicit map in InstrumentCache.
+    - Equities, FUT, and option contracts fall back to the instrument's `name` field on NFO/BFO.
+    """
+    tradingsymbol = (inst.get("tradingsymbol") or "").upper()
+    exchange = (inst.get("exchange") or "").upper()
+    fno_exchange, fno_symbol = _instrument_cache.resolve_fno(tradingsymbol, exchange)
+    if fno_exchange != exchange:
+        return fno_exchange, fno_symbol
+    name = ((inst.get("name") or tradingsymbol)).upper()
+    fno_exchange = {"NSE": "NFO", "BSE": "BFO"}.get(exchange, exchange)
+    return fno_exchange, name
+
+
+def _underlying_spot_ltp(instrument_token: int) -> float:
+    """Best-effort underlying last price for ATM selection, looked up directly by instrument_token."""
+    try:
+        data = _kite.quote([int(instrument_token)])
+        q = data.get(str(instrument_token)) or data.get(instrument_token)
+        if q:
+            lp = q.get("last_price") or 0.0
+            if lp > 0:
+                return float(lp)
+    except Exception:
+        pass
     return 0.0
 
 
@@ -434,70 +441,73 @@ async def instruments_underlyings(q: str):
         return enriched
 
     results: list[dict] = []
-    seen: set[str] = set()
+    seen: set[int] = set()
 
-    # NSE + BSE equities (skip INDICES — they appear correctly as OPTIONS via NFO/BFO loop)
+    # NSE + BSE: equities and INDICES (e.g. "NIFTY 50") — both routed via instrument_token
     for exch in ("NSE", "BSE"):
         for detail in _enrich(_instrument_cache.search(q.upper(), exch)):
-            if detail.get("instrument_type") == "EQ" and detail.get("segment") != "INDICES":
-                sym = detail.get("tradingsymbol", "")
-                if sym and sym not in seen:
-                    seen.add(sym)
-                    results.append({"symbol": sym, "exchange": exch, "instrument_type": "EQ"})
+            token = detail.get("instrument_token")
+            if token is None or token in seen:
+                continue
+            segment = detail.get("segment", "")
+            itype = detail.get("instrument_type", "")
+            if segment == "INDICES":
+                seen.add(token)
+                results.append({
+                    "symbol": detail.get("tradingsymbol", ""),
+                    "exchange": exch,
+                    "instrument_type": "INDICES",
+                    "instrument_token": token,
+                })
+            elif itype == "EQ":
+                seen.add(token)
+                results.append({
+                    "symbol": detail.get("tradingsymbol", ""),
+                    "exchange": exch,
+                    "instrument_type": "EQ",
+                    "instrument_token": token,
+                })
 
-    # NFO + BFO derivatives: individual FUT contracts + one option-chain entry per underlying
-    option_underlyings_seen: set[str] = set()
+    # NFO + BFO: individual FUT contracts (option chain is reachable via the underlying instead)
     for exch in ("NFO", "BFO"):
         for detail in _enrich(_instrument_cache.search(q.upper(), exch)):
-            itype = detail.get("instrument_type", "")
-            tradingsymbol = detail.get("tradingsymbol", "")
-            name = detail.get("name", "")
-
-            if itype == "FUT":
-                # Each futures contract is a distinct, searchable instrument
-                if tradingsymbol and tradingsymbol not in seen:
-                    seen.add(tradingsymbol)
-                    results.append({"symbol": tradingsymbol, "exchange": exch, "instrument_type": "FUT"})
-
-            elif itype in ("CE", "PE"):
-                # Collapse all strikes/expiries into one option-chain entry per underlying
-                if name and name.upper().startswith(q.upper()) and name not in option_underlyings_seen:
-                    option_underlyings_seen.add(name)
-                    key = f"{exch}:{name}:OPTIONS"
-                    if key not in seen:
-                        seen.add(key)
-                        results.append({"symbol": name, "exchange": exch, "instrument_type": "OPTIONS"})
+            if detail.get("instrument_type") != "FUT":
+                continue
+            token = detail.get("instrument_token")
+            if token is None or token in seen:
+                continue
+            seen.add(token)
+            results.append({
+                "symbol": detail.get("tradingsymbol", ""),
+                "exchange": exch,
+                "instrument_type": "FUT",
+                "instrument_token": token,
+            })
 
     return {"results": results[:20], "cache_populated": _instrument_cache.is_cached()}
 
 
-@app.get("/symbol/{symbol}/quote")
-async def symbol_quote(symbol: str, exchange: str = "NSE"):
-    """Return live OHLCV quote for a symbol. Falls back to NSE when exchange is NFO."""
+@app.get("/instruments/{instrument_token}/quote")
+async def instrument_quote(instrument_token: int):
+    """Return live OHLCV quote for an instrument identified by its instrument_token."""
     _require_auth()
-    sym = symbol.upper()
-    ex = exchange.upper()
-
-    def _fetch_quote(ex_key: str):
-        key = f"{ex_key}:{sym}"
-        data = _kite.quote([key])
-        return data.get(key)
+    inst = _instrument_cache.get_instrument(instrument_token)
+    if not inst:
+        raise HTTPException(status_code=404, detail=f"instrument_token {instrument_token} not found")
 
     try:
-        q = _fetch_quote(ex)
-        if not q and ex == "NFO":
-            q = _fetch_quote("NSE")
+        data = _kite.quote([instrument_token])
+        q = data.get(str(instrument_token)) or data.get(instrument_token)
         if not q:
-            raise HTTPException(status_code=404, detail=f"{sym} not found")
+            raise HTTPException(status_code=404, detail=f"No quote returned for {instrument_token}")
         ohlc = q.get("ohlc", {})
         ltp = q.get("last_price", 0.0)
         prev_close = ohlc.get("close", ltp) or ltp
         change = round(ltp - prev_close, 2)
         change_pct = round(change / prev_close * 100, 2) if prev_close else 0.0
-        instrument_token = _instrument_cache.get_token(sym, ex) if _instrument_cache else None
         return {
-            "symbol": sym,
-            "exchange": ex,
+            "symbol": inst.get("tradingsymbol", ""),
+            "exchange": inst.get("exchange", ""),
             "instrument_token": instrument_token,
             "ltp": ltp,
             "open": ohlc.get("open", 0.0),
@@ -514,16 +524,19 @@ async def symbol_quote(symbol: str, exchange: str = "NSE"):
         raise HTTPException(status_code=503, detail=str(e))
 
 
-@app.get("/symbol/{symbol}/expiries")
-async def symbol_expiries(symbol: str, exchange: str = "NFO"):
-    """Return the nearest upcoming expiry dates (at most MAX_SYMBOL_EXPIRIES) for an underlying.
+@app.get("/instruments/{instrument_token}/expiries")
+async def instrument_expiries(instrument_token: int):
+    """Return the nearest upcoming expiry dates (at most MAX_SYMBOL_EXPIRIES) for an underlying
+    identified by its instrument_token.
 
     Traverses instruments once, keeping only the k smallest unique future expiries via a
     bounded heap; does not build or sort the full distinct-expiry set.
     """
     _require_auth()
-    # Translate index tradingsymbol → F&O name+exchange (e.g. "NIFTY 50" → NFO:"NIFTY")
-    exchange, symbol = _instrument_cache.resolve_fno(symbol.upper(), exchange.upper())
+    inst = _instrument_cache.get_instrument(instrument_token)
+    if not inst:
+        raise HTTPException(status_code=404, detail=f"instrument_token {instrument_token} not found")
+    exchange, symbol = _resolve_fno_underlying(inst)
     try:
         instruments = await asyncio.get_event_loop().run_in_executor(
             None, _cached_instruments, exchange
@@ -564,13 +577,15 @@ async def symbol_expiries(symbol: str, exchange: str = "NFO"):
     }
 
 
-@app.get("/symbol/{symbol}/option-chain")
-async def symbol_option_chain(symbol: str, expiry: str, exchange: str = "NFO"):
+@app.get("/instruments/{instrument_token}/option-chain")
+async def instrument_option_chain(instrument_token: int, expiry: str):
     """Return option chain rows near ATM: at most MAX_OPTION_CHAIN_STRIKES_EACH_SIDE strikes
     below and above ATM (ATM row included), with LTP per leg when available."""
     _require_auth()
-    # Translate index tradingsymbol → F&O name+exchange (e.g. "NIFTY 50" → NFO:"NIFTY")
-    exchange, symbol = _instrument_cache.resolve_fno(symbol.upper(), exchange.upper())
+    inst = _instrument_cache.get_instrument(instrument_token)
+    if not inst:
+        raise HTTPException(status_code=404, detail=f"instrument_token {instrument_token} not found")
+    exchange, symbol = _resolve_fno_underlying(inst)
 
     try:
         expiry_date = datetime.date.fromisoformat(expiry)
@@ -612,7 +627,7 @@ async def symbol_option_chain(symbol: str, expiry: str, exchange: str = "NFO"):
 
     sorted_strikes = sorted(strikes.keys())
     half = MAX_OPTION_CHAIN_STRIKES_EACH_SIDE
-    spot = _underlying_spot_ltp(symbol, exchange)
+    spot = _underlying_spot_ltp(instrument_token)
     if spot > 0:
         atm_strike = min(sorted_strikes, key=lambda s: abs(s - spot))
         atm_i = sorted_strikes.index(atm_strike)

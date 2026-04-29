@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { OptionChainRow } from "@/lib/api";
@@ -7,17 +7,17 @@ import { useSymbolQuote } from "@/hooks/useSymbolQuote";
 
 // ─── Quote Section ────────────────────────────────────────────────────────────
 
-function QuoteSection({ symbol, exchange }: { symbol: string; exchange: string }) {
+function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
   // Initial REST call for OHLC/change data (day-level, not tick-rate)
   const { data, isLoading, error } = useQuery({
-    queryKey: ["symbolQuote", symbol, exchange],
-    queryFn: () => api.symbolQuote(symbol, exchange),
+    queryKey: ["instrumentQuote", instrumentToken],
+    queryFn: () => api.instrumentQuote(instrumentToken),
     refetchInterval: false,
     retry: false,
   });
 
   // Real-time LTP + volume via KiteTicker WebSocket
-  const { tick: liveTick, error: wsError } = useSymbolQuote(symbol, exchange);
+  const { tick: liveTick, error: wsError } = useSymbolQuote(instrumentToken, data?.symbol);
 
   if (isLoading) {
     return (
@@ -108,19 +108,17 @@ function QuoteSection({ symbol, exchange }: { symbol: string; exchange: string }
 // ─── Expiry Picker ────────────────────────────────────────────────────────────
 
 function ExpirySection({
-  symbol,
-  exchange,
+  instrumentToken,
   selected,
   onSelect,
 }: {
-  symbol: string;
-  exchange: string;
+  instrumentToken: number;
   selected: string | null;
   onSelect: (expiry: string) => void;
 }) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["symbolExpiries", symbol, exchange],
-    queryFn: () => api.symbolExpiries(symbol, exchange),
+    queryKey: ["instrumentExpiries", instrumentToken],
+    queryFn: () => api.instrumentExpiries(instrumentToken),
     retry: false,
   });
 
@@ -184,19 +182,17 @@ function ExpirySection({
 // ─── Option Chain Table ───────────────────────────────────────────────────────
 
 function OptionChainTable({
-  symbol,
+  instrumentToken,
   expiry,
-  exchange,
   ltp,
 }: {
-  symbol: string;
+  instrumentToken: number;
   expiry: string;
-  exchange: string;
   ltp: number;
 }) {
   const { data, isLoading, error } = useQuery({
-    queryKey: ["optionChain", symbol, expiry, exchange],
-    queryFn: () => api.optionChain(symbol, expiry, exchange),
+    queryKey: ["instrumentOptionChain", instrumentToken, expiry],
+    queryFn: () => api.instrumentOptionChain(instrumentToken, expiry),
     refetchInterval: 10000,
     retry: false,
   });
@@ -305,50 +301,35 @@ function OptionChainTable({
   );
 }
 
-// Map an equity/index exchange to its F&O segment
-function toFnoExchange(exchange: string): string {
-  if (exchange === "NSE") return "NFO";
-  if (exchange === "BSE") return "BFO";
-  return exchange;
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SymbolPage() {
-  const { symbol } = useParams<{ symbol: string }>();
-  const [searchParams] = useSearchParams();
-  const exchange = searchParams.get("exchange") ?? "NSE";
-  const fnoExchange = toFnoExchange(exchange);
+  const { instrumentToken: tokenParam } = useParams<{ instrumentToken: string }>();
+  const instrumentToken = tokenParam ? Number(tokenParam) : NaN;
   const [selectedExpiry, setSelectedExpiry] = useState<string | null>(null);
 
-  // Show expiry + option chain for OPTIONS or when navigating directly without a type
-  const showDerivatives = true;
-
   // Get live LTP for ATM calculation via WebSocket (same stream as QuoteSection)
-  const liveTick = useSymbolQuote(symbol ?? "", exchange);
+  const liveTick = useSymbolQuote(Number.isFinite(instrumentToken) ? instrumentToken : 0);
 
-  if (!symbol) return null;
+  if (!Number.isFinite(instrumentToken) || instrumentToken <= 0) return null;
 
   return (
     <div className="space-y-6">
       {/* Quote */}
-      <QuoteSection symbol={symbol} exchange={exchange} />
+      <QuoteSection instrumentToken={instrumentToken} />
 
-      {/* Expiries — only for OPTIONS underlyings */}
-      {showDerivatives && (
-        <section>
-          <h2 className="mb-3 text-sm font-semibold text-text-primary">Expiries</h2>
-          <ExpirySection
-            symbol={symbol}
-            exchange={fnoExchange}
-            selected={selectedExpiry}
-            onSelect={(exp) => setSelectedExpiry((prev) => (prev === exp ? null : exp))}
-          />
-        </section>
-      )}
+      {/* Expiries */}
+      <section>
+        <h2 className="mb-3 text-sm font-semibold text-text-primary">Expiries</h2>
+        <ExpirySection
+          instrumentToken={instrumentToken}
+          selected={selectedExpiry}
+          onSelect={(exp) => setSelectedExpiry((prev) => (prev === exp ? null : exp))}
+        />
+      </section>
 
-      {/* Option Chain — only for OPTIONS underlyings */}
-      {showDerivatives && selectedExpiry && (
+      {/* Option Chain */}
+      {selectedExpiry && (
         <section>
           <h2 className="mb-3 text-sm font-semibold text-text-primary">
             Option Chain —{" "}
@@ -361,9 +342,8 @@ export default function SymbolPage() {
             </span>
           </h2>
           <OptionChainTable
-            symbol={symbol}
+            instrumentToken={instrumentToken}
             expiry={selectedExpiry}
-            exchange={fnoExchange}
             ltp={liveTick?.tick?.ltp ?? 0}
           />
         </section>

@@ -72,6 +72,7 @@ export interface Underlying {
   symbol: string;
   exchange: string;
   instrument_type: string;
+  instrument_token: number;
 }
 
 export interface SymbolQuote {
@@ -146,17 +147,17 @@ export const api = {
   searchUnderlyings: (q: string) =>
     request<{ results: Underlying[]; cache_populated: boolean }>(`/instruments/underlyings?q=${encodeURIComponent(q)}`),
 
-  symbolQuote: (symbol: string, exchange: string) =>
-    request<SymbolQuote>(`/symbol/${encodeURIComponent(symbol)}/quote?exchange=${encodeURIComponent(exchange)}`),
+  instrumentQuote: (instrumentToken: number) =>
+    request<SymbolQuote>(`/instruments/${instrumentToken}/quote`),
 
-  symbolExpiries: (symbol: string, exchange: string) =>
+  instrumentExpiries: (instrumentToken: number) =>
     request<{ symbol: string; exchange: string; expiries: string[] }>(
-      `/symbol/${encodeURIComponent(symbol)}/expiries?exchange=${encodeURIComponent(exchange)}`
+      `/instruments/${instrumentToken}/expiries`
     ),
 
-  optionChain: (symbol: string, expiry: string, exchange: string) =>
+  instrumentOptionChain: (instrumentToken: number, expiry: string) =>
     request<{ symbol: string; exchange: string; expiry: string; chain: OptionChainRow[] }>(
-      `/symbol/${encodeURIComponent(symbol)}/option-chain?expiry=${encodeURIComponent(expiry)}&exchange=${encodeURIComponent(exchange)}`
+      `/instruments/${instrumentToken}/option-chain?expiry=${encodeURIComponent(expiry)}`
     ),
 
   strategyPositions: (name: string) =>

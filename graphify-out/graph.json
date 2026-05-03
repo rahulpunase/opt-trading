@@ -64,7 +64,7 @@
       "label": "_validate_chartink_url()",
       "file_type": "code",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/scraper/main.py",
-      "source_location": "L21",
+      "source_location": "L20",
       "id": "main_validate_chartink_url",
       "community": 4,
       "norm_label": "_validate_chartink_url()"
@@ -82,7 +82,7 @@
       "label": "scrape()",
       "file_type": "code",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/scraper/main.py",
-      "source_location": "L36",
+      "source_location": "L35",
       "id": "main_scrape",
       "community": 4,
       "norm_label": "scrape()"
@@ -119,9 +119,9 @@
       "file_type": "rationale",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/chartink_scraper.py",
       "source_location": "L27",
-      "id": "chartink_scraper_rationale_27",
       "community": 1,
-      "norm_label": "fetch nse symbols from a chartink screener via the scraper sidecar service."
+      "norm_label": "fetch nse symbols from a chartink screener via the scraper sidecar service.",
+      "id": "chartink_scraper_rationale_27"
     },
     {
       "label": "candles.py",
@@ -497,9 +497,9 @@
       "file_type": "rationale",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/base_strategy.py",
       "source_location": "L85",
-      "id": "base_strategy_rationale_85",
       "community": 8,
-      "norm_label": "subscribe to an instrument beyond the yaml instruments list. call from on_start("
+      "norm_label": "subscribe to an instrument beyond the yaml instruments list. call from on_start(",
+      "id": "base_strategy_rationale_85"
     },
     {
       "label": "risk_gate.py",
@@ -1379,27 +1379,27 @@
       "file_type": "rationale",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L30",
-      "id": "strategy_loader_rationale_30",
       "community": 3,
-      "norm_label": "called after /auth when datafeed is started \u2014 injected into all subsequently loa"
+      "norm_label": "called after /auth when datafeed is started \u2014 injected into all subsequently loa",
+      "id": "strategy_loader_rationale_30"
     },
     {
       "label": "Called after /auth when CandleStore is constructed.",
       "file_type": "rationale",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L34",
-      "id": "strategy_loader_rationale_34",
       "community": 3,
-      "norm_label": "called after /auth when candlestore is constructed."
+      "norm_label": "called after /auth when candlestore is constructed.",
+      "id": "strategy_loader_rationale_34"
     },
     {
       "label": "Resolve the strategy's `instruments` list to Kite instrument_tokens.         Fal",
       "file_type": "rationale",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L141",
-      "id": "strategy_loader_rationale_141",
       "community": 0,
-      "norm_label": "resolve the strategy's `instruments` list to kite instrument_tokens.         fal"
+      "norm_label": "resolve the strategy's `instruments` list to kite instrument_tokens.         fal",
+      "id": "strategy_loader_rationale_141"
     },
     {
       "label": "order_router.py",
@@ -4311,7 +4311,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/scraper/main.py",
-      "source_location": "L21",
+      "source_location": "L20",
       "weight": 1.0,
       "_src": "users_macbookpro_documents_projects_trading_opt_trading_scraper_main_py",
       "_tgt": "main_validate_chartink_url",
@@ -4323,7 +4323,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/scraper/main.py",
-      "source_location": "L31",
+      "source_location": "L30",
       "weight": 1.0,
       "_src": "users_macbookpro_documents_projects_trading_opt_trading_scraper_main_py",
       "_tgt": "main_health",
@@ -4335,7 +4335,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/scraper/main.py",
-      "source_location": "L36",
+      "source_location": "L35",
       "weight": 1.0,
       "_src": "users_macbookpro_documents_projects_trading_opt_trading_scraper_main_py",
       "_tgt": "main_scrape",
@@ -4347,7 +4347,7 @@
       "relation": "calls",
       "confidence": "EXTRACTED",
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/scraper/main.py",
-      "source_location": "L38",
+      "source_location": "L37",
       "weight": 1.0,
       "_src": "main_scrape",
       "_tgt": "main_validate_chartink_url",
@@ -4434,8 +4434,8 @@
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L80",
       "weight": 1.0,
-      "_src": "strategy_loader_strategyloader_load_file",
-      "_tgt": "chartink_scraper_fetch_chartink_symbols",
+      "_src": "chartink_scraper_fetch_chartink_symbols",
+      "_tgt": "strategy_loader_strategyloader_load_file",
       "source": "chartink_scraper_fetch_chartink_symbols",
       "target": "strategy_loader_strategyloader_load_file"
     },
@@ -5513,11 +5513,11 @@
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L10",
       "weight": 0.8,
-      "_src": "strategy_loader_rationale_30",
-      "_tgt": "base_strategy_basestrategy",
+      "_src": "base_strategy_basestrategy",
+      "_tgt": "strategy_loader_rationale_30",
+      "confidence_score": 0.5,
       "source": "base_strategy_basestrategy",
-      "target": "strategy_loader_rationale_30",
-      "confidence_score": 0.5
+      "target": "strategy_loader_rationale_30"
     },
     {
       "relation": "uses",
@@ -5525,11 +5525,11 @@
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L10",
       "weight": 0.8,
-      "_src": "strategy_loader_rationale_34",
-      "_tgt": "base_strategy_basestrategy",
+      "_src": "base_strategy_basestrategy",
+      "_tgt": "strategy_loader_rationale_34",
+      "confidence_score": 0.5,
       "source": "base_strategy_basestrategy",
-      "target": "strategy_loader_rationale_34",
-      "confidence_score": 0.5
+      "target": "strategy_loader_rationale_34"
     },
     {
       "relation": "uses",
@@ -5537,11 +5537,11 @@
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L10",
       "weight": 0.8,
-      "_src": "strategy_loader_rationale_141",
-      "_tgt": "base_strategy_basestrategy",
+      "_src": "base_strategy_basestrategy",
+      "_tgt": "strategy_loader_rationale_141",
+      "confidence_score": 0.5,
       "source": "base_strategy_basestrategy",
-      "target": "strategy_loader_rationale_141",
-      "confidence_score": 0.5
+      "target": "strategy_loader_rationale_141"
     },
     {
       "relation": "uses",
@@ -10675,9 +10675,9 @@
       "weight": 0.8,
       "_src": "strategy_loader_rationale_30",
       "_tgt": "state_strategystate",
+      "confidence_score": 0.5,
       "source": "strategy_loader_rationale_30",
-      "target": "state_strategystate",
-      "confidence_score": 0.5
+      "target": "state_strategystate"
     },
     {
       "relation": "uses",
@@ -10687,9 +10687,9 @@
       "weight": 0.8,
       "_src": "strategy_loader_rationale_34",
       "_tgt": "state_strategystate",
+      "confidence_score": 0.5,
       "source": "strategy_loader_rationale_34",
-      "target": "state_strategystate",
-      "confidence_score": 0.5
+      "target": "state_strategystate"
     },
     {
       "relation": "uses",
@@ -10699,9 +10699,9 @@
       "weight": 0.8,
       "_src": "strategy_loader_rationale_141",
       "_tgt": "state_strategystate",
+      "confidence_score": 0.5,
       "source": "strategy_loader_rationale_141",
-      "target": "state_strategystate",
-      "confidence_score": 0.5
+      "target": "state_strategystate"
     },
     {
       "relation": "contains",
@@ -11765,8 +11765,8 @@
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L11",
       "weight": 0.8,
-      "_src": "strategy_loader_rationale_29",
-      "_tgt": "state_strategystate",
+      "_src": "state_strategystate",
+      "_tgt": "strategy_loader_rationale_29",
       "confidence_score": 0.5,
       "source": "state_strategystate",
       "target": "strategy_loader_rationale_29"
@@ -11777,8 +11777,8 @@
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L11",
       "weight": 0.8,
-      "_src": "strategy_loader_rationale_33",
-      "_tgt": "state_strategystate",
+      "_src": "state_strategystate",
+      "_tgt": "strategy_loader_rationale_33",
       "confidence_score": 0.5,
       "source": "state_strategystate",
       "target": "strategy_loader_rationale_33"
@@ -11789,8 +11789,8 @@
       "source_file": "/Users/macbookpro/Documents/projects/trading/opt-trading/core/strategy_loader.py",
       "source_location": "L11",
       "weight": 0.8,
-      "_src": "strategy_loader_rationale_117",
-      "_tgt": "state_strategystate",
+      "_src": "state_strategystate",
+      "_tgt": "strategy_loader_rationale_117",
       "confidence_score": 0.5,
       "source": "state_strategystate",
       "target": "strategy_loader_rationale_117"

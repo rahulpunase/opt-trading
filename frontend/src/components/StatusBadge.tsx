@@ -1,13 +1,13 @@
 type Variant = "running" | "stopped" | "paused" | "paper" | "live" | "enabled" | "disabled";
 
 const styles: Record<Variant, string> = {
-  running: "bg-[var(--color-profit)]/10 text-[var(--color-profit)] border-[var(--color-profit)]/30",
-  stopped: "bg-[var(--color-loss)]/10 text-[var(--color-loss)] border-[var(--color-loss)]/30",
-  paused:  "bg-[var(--color-paper)]/10 text-[var(--color-paper)] border-[var(--color-paper)]/30",
-  paper:   "bg-[var(--color-paper)]/10 text-[var(--color-paper)] border-[var(--color-paper)]/30",
-  live:    "bg-[var(--color-live)]/10  text-[var(--color-live)]  border-[var(--color-live)]/30",
-  enabled: "bg-[var(--color-profit)]/10 text-[var(--color-profit)] border-[var(--color-profit)]/30",
-  disabled:"bg-[var(--color-text-muted)]/10 text-[var(--color-text-muted)] border-[var(--color-text-muted)]/20",
+  running: "bg-profit/10 text-profit border-profit/30",
+  stopped: "bg-loss/10 text-loss border-loss/30",
+  paused:  "bg-paper/10 text-paper border-paper/30",
+  paper:   "bg-paper/10 text-paper border-paper/30",
+  live:    "bg-live/10  text-live  border-live/30",
+  enabled: "bg-profit/10 text-profit border-profit/30",
+  disabled:"bg-text-muted/10 text-text-muted border-text-muted/20",
 };
 
 const labels: Record<Variant, string> = {

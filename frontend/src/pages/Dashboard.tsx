@@ -22,23 +22,23 @@ function StatCard({
   positive?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
-      <p className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+    <div className="rounded-xl border border-border bg-bg-surface p-5">
+      <p className="text-xs font-medium text-text-muted uppercase tracking-wider">
         {label}
       </p>
       <p
         className={`mt-2 text-2xl font-bold ${
           positive === undefined
-            ? "text-[var(--color-text-primary)]"
+            ? "text-text-primary"
             : positive
-              ? "text-[var(--color-profit)]"
-              : "text-[var(--color-loss)]"
+              ? "text-profit"
+              : "text-loss"
         }`}
       >
         {value}
       </p>
       {sub && (
-        <p className="mt-1 text-xs text-[var(--color-text-muted)]">{sub}</p>
+        <p className="mt-1 text-xs text-text-muted">{sub}</p>
       )}
     </div>
   );
@@ -82,10 +82,10 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+        <h2 className="text-lg font-semibold text-text-primary">
           Portfolio Overview
         </h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="text-sm text-text-muted">
           Today's performance across all strategies
         </p>
       </div>
@@ -120,10 +120,10 @@ export default function Dashboard() {
 
       {/* Margin breakdown */}
       <div>
-        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+        <h2 className="text-lg font-semibold text-text-primary">
           Margin Breakdown — Equity
         </h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="text-sm text-text-muted">
           Live funds and utilisation from Kite
         </p>
       </div>
@@ -149,12 +149,12 @@ export default function Dashboard() {
       </div>
 
       {/* P&L chart */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
-        <p className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">
+      <div className="rounded-xl border border-border bg-bg-surface p-5">
+        <p className="mb-4 text-sm font-medium text-text-primary">
           Cumulative P&L
         </p>
         {pnlHistory.length < 2 ? (
-          <div className="flex h-[220px] items-center justify-center text-sm text-[var(--color-text-muted)]">
+          <div className="flex h-[220px] items-center justify-center text-sm text-text-muted">
             Collecting data…
           </div>
         ) : (
@@ -164,27 +164,27 @@ export default function Dashboard() {
 
       {/* Strategy quick-status */}
       {strategies.length > 0 && (
-        <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
-          <p className="mb-4 text-sm font-medium text-[var(--color-text-primary)]">
+        <div className="rounded-xl border border-border bg-bg-surface p-5">
+          <p className="mb-4 text-sm font-medium text-text-primary">
             Strategy Summary
           </p>
-          <div className="divide-y divide-[var(--color-border)]">
+          <div className="divide-y divide-border">
             {strategies.map((s) => (
               <div
                 key={s.name}
                 className="flex items-center justify-between py-2.5 text-sm"
               >
-                <span className="font-medium text-[var(--color-text-primary)]">
+                <span className="font-medium text-text-primary">
                   {s.name}
                 </span>
-                <div className="flex items-center gap-4 text-[var(--color-text-muted)]">
+                <div className="flex items-center gap-4 text-text-muted">
                   <span>{s.trades_today} trades</span>
                   <span>{s.open_positions} open</span>
                   <span
                     className={`text-xs font-medium ${
                       s.paper_trade
-                        ? "text-[var(--color-paper)]"
-                        : "text-[var(--color-live)]"
+                        ? "text-paper"
+                        : "text-live"
                     }`}
                   >
                     {s.paper_trade ? "Paper" : "Live"}

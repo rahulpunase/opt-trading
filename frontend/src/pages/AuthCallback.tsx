@@ -29,9 +29,9 @@ export default function AuthCallback() {
   }, [searchParams, navigate, refresh]);
 
   return (
-    <div className="flex h-full min-h-screen flex-col items-center justify-center gap-4 bg-[var(--color-bg-base)]">
-      <div className="h-10 w-10 animate-spin rounded-full border-2 border-[var(--color-accent)] border-t-transparent" />
-      <p className="text-sm text-[var(--color-text-muted)]">
+    <div className="flex h-full min-h-screen flex-col items-center justify-center gap-4 bg-bg-base">
+      <div className="h-10 w-10 animate-spin rounded-full border-2 border-accent border-t-transparent" />
+      <p className="text-sm text-text-muted">
         Completing authentication…
       </p>
     </div>

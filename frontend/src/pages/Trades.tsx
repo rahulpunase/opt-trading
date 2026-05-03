@@ -51,10 +51,10 @@ export default function Trades() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+          <h2 className="text-lg font-semibold text-text-primary">
             Trade History
           </h2>
-          <p className="text-sm text-[var(--color-text-muted)]">Today's executed trades</p>
+          <p className="text-sm text-text-muted">Today's executed trades</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -62,7 +62,7 @@ export default function Trades() {
           <select
             value={selectedStrategy}
             onChange={(e) => setSelectedStrategy(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-accent)]"
+            className="rounded-lg border border-border bg-bg-surface px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
           >
             <option value="all">All Strategies</option>
             {strategies.map((s) => (
@@ -73,15 +73,15 @@ export default function Trades() {
           </select>
 
           {/* Mode toggle */}
-          <div className="flex rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-1 text-xs font-medium">
+          <div className="flex rounded-lg border border-border bg-bg-surface p-1 text-xs font-medium">
             {(["all", "paper", "live"] as ModeFilter[]).map((f) => (
               <button
                 key={f}
                 onClick={() => setModeFilter(f)}
                 className={`rounded-md px-3 py-1.5 capitalize transition ${
                   modeFilter === f
-                    ? "bg-[var(--color-accent)] text-white"
-                    : "text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                    ? "bg-accent text-white"
+                    : "text-text-muted hover:text-text-primary"
                 }`}
               >
                 {f}
@@ -91,20 +91,20 @@ export default function Trades() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] overflow-hidden">
+      <div className="rounded-xl border border-border bg-bg-surface overflow-hidden">
         {isLoading ? (
-          <div className="flex h-40 items-center justify-center text-sm text-[var(--color-text-muted)]">
+          <div className="flex h-40 items-center justify-center text-sm text-text-muted">
             Loading…
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex h-40 items-center justify-center text-sm text-[var(--color-text-muted)]">
+          <div className="flex h-40 items-center justify-center text-sm text-text-muted">
             No trades found
           </div>
         ) : (
           <>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[var(--color-border)] text-left text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-text-muted">
                   <th className="px-5 py-3">Time</th>
                   <th className="px-5 py-3">Strategy</th>
                   <th className="px-5 py-3">Symbol</th>
@@ -115,10 +115,10 @@ export default function Trades() {
                   <th className="px-5 py-3">Mode</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[var(--color-border)]">
+              <tbody className="divide-y divide-border">
                 {filtered.map((t, i) => (
-                  <tr key={i} className="hover:bg-[var(--color-bg-elevated)] transition">
-                    <td className="px-5 py-3 text-[var(--color-text-muted)]">
+                  <tr key={i} className="hover:bg-bg-elevated transition">
+                    <td className="px-5 py-3 text-text-muted">
                       {new Date(t.time).toLocaleTimeString("en-IN", {
                         timeZone: "Asia/Kolkata",
                         hour: "2-digit",
@@ -126,34 +126,34 @@ export default function Trades() {
                         second: "2-digit",
                       })}
                     </td>
-                    <td className="px-5 py-3 font-medium text-[var(--color-text-primary)]">
+                    <td className="px-5 py-3 font-medium text-text-primary">
                       {t.strategy}
                     </td>
-                    <td className="px-5 py-3 text-[var(--color-text-primary)]">
+                    <td className="px-5 py-3 text-text-primary">
                       {t.symbol}
                     </td>
                     <td className="px-5 py-3">
                       <span
                         className={`text-xs font-semibold ${
                           t.side === "BUY"
-                            ? "text-[var(--color-profit)]"
-                            : "text-[var(--color-loss)]"
+                            ? "text-profit"
+                            : "text-loss"
                         }`}
                       >
                         {t.side}
                       </span>
                     </td>
-                    <td className="px-5 py-3 text-right text-[var(--color-text-muted)]">
+                    <td className="px-5 py-3 text-right text-text-muted">
                       {t.qty}
                     </td>
-                    <td className="px-5 py-3 text-right text-[var(--color-text-muted)]">
+                    <td className="px-5 py-3 text-right text-text-muted">
                       ₹{Number(t.price).toFixed(2)}
                     </td>
                     <td
                       className={`px-5 py-3 text-right font-medium ${
                         (t.pnl ?? 0) >= 0
-                          ? "text-[var(--color-profit)]"
-                          : "text-[var(--color-loss)]"
+                          ? "text-profit"
+                          : "text-loss"
                       }`}
                     >
                       {t.pnl != null
@@ -164,8 +164,8 @@ export default function Trades() {
                       <span
                         className={`text-xs font-medium ${
                           t.paper_trade
-                            ? "text-[var(--color-paper)]"
-                            : "text-[var(--color-live)]"
+                            ? "text-paper"
+                            : "text-live"
                         }`}
                       >
                         {t.paper_trade ? "Paper" : "Live"}
@@ -177,17 +177,17 @@ export default function Trades() {
             </table>
 
             {/* Footer total */}
-            <div className="flex items-center justify-between border-t border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-5 py-3">
-              <span className="text-xs text-[var(--color-text-muted)]">
+            <div className="flex items-center justify-between border-t border-border bg-bg-elevated px-5 py-3">
+              <span className="text-xs text-text-muted">
                 {filtered.length} trade{filtered.length !== 1 ? "s" : ""}
               </span>
               <div className="flex items-center gap-2 text-sm font-semibold">
-                <span className="text-[var(--color-text-muted)]">Total P&L:</span>
+                <span className="text-text-muted">Total P&L:</span>
                 <span
                   className={
                     totalPnl >= 0
-                      ? "text-[var(--color-profit)]"
-                      : "text-[var(--color-loss)]"
+                      ? "text-profit"
+                      : "text-loss"
                   }
                 >
                   {totalPnl >= 0 ? "+" : ""}

@@ -18,13 +18,13 @@ export default function Login() {
   };
 
   return (
-    <div className="flex h-full min-h-screen items-center justify-center bg-[var(--color-bg-base)]">
-      <div className="w-full max-w-sm rounded-2xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-8 shadow-2xl">
+    <div className="flex h-full min-h-screen items-center justify-center bg-bg-base">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-bg-surface p-8 shadow-2xl">
         {/* Logo / brand */}
         <div className="mb-8 text-center">
-          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-[var(--color-accent)]/10">
+          <div className="mb-3 inline-flex h-14 w-14 items-center justify-center rounded-xl bg-accent/10">
             <svg
-              className="h-8 w-8 text-[var(--color-accent)]"
+              className="h-8 w-8 text-accent"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -37,10 +37,10 @@ export default function Login() {
               />
             </svg>
           </div>
-          <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">
+          <h1 className="text-xl font-semibold text-text-primary">
             Kite Trader Platform
           </h1>
-          <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+          <p className="mt-1 text-sm text-text-muted">
             Connect your Zerodha account to continue
           </p>
         </div>
@@ -54,7 +54,7 @@ export default function Login() {
         <button
           onClick={handleLogin}
           disabled={loading}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[var(--color-accent)] px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-4 py-3 text-sm font-medium text-white transition hover:opacity-90 disabled:opacity-50"
         >
           {loading ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -66,7 +66,7 @@ export default function Login() {
           {loading ? "Redirecting to Kite…" : "Login with Kite Connect"}
         </button>
 
-        <p className="mt-6 text-center text-xs text-[var(--color-text-muted)]">
+        <p className="mt-6 text-center text-xs text-text-muted">
           You'll be redirected to Zerodha to authenticate.
           <br />
           No credentials are stored by this platform.

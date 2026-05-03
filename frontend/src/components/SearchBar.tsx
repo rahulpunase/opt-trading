@@ -102,14 +102,14 @@ export default function SearchBar() {
     if (loading) return null;
     if (!cachePopulated) {
       return (
-        <p className="px-3 py-2.5 text-xs text-[var(--color-text-muted)]">
+        <p className="px-3 py-2.5 text-xs text-text-muted">
           Instrument data not loaded — authenticate with Kite first.
         </p>
       );
     }
     if (results.length === 0) {
       return (
-        <p className="px-3 py-2.5 text-xs text-[var(--color-text-muted)]">No results found</p>
+        <p className="px-3 py-2.5 text-xs text-text-muted">No results found</p>
       );
     }
     return (
@@ -121,8 +121,8 @@ export default function SearchBar() {
               onMouseEnter={() => setActiveIdx(idx)}
               className={`flex w-full items-center justify-between px-3 py-2 text-left text-xs transition ${
                 activeIdx === idx
-                  ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)]"
-                  : "text-[var(--color-text-primary)] hover:bg-[var(--color-bg-elevated)]"
+                  ? "bg-accent/10 text-accent"
+                  : "text-text-primary hover:bg-bg-elevated"
               }`}
             >
               <span className="font-medium">{item.symbol}</span>
@@ -141,8 +141,8 @@ export default function SearchBar() {
 
   return (
     <div ref={containerRef} className="relative w-72">
-      <div className="flex items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-elevated)] px-3 py-1.5">
-        <svg className="h-3.5 w-3.5 shrink-0 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <div className="flex items-center gap-2 rounded-lg border border-border bg-bg-elevated px-3 py-1.5">
+        <svg className="h-3.5 w-3.5 shrink-0 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
         </svg>
         <input
@@ -153,10 +153,10 @@ export default function SearchBar() {
           onFocus={() => setOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search symbol…"
-          className="w-full bg-transparent text-xs text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] outline-none"
+          className="w-full bg-transparent text-xs text-text-primary placeholder:text-text-muted outline-none"
         />
         {loading && (
-          <svg className="h-3 w-3 shrink-0 animate-spin text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24">
+          <svg className="h-3 w-3 shrink-0 animate-spin text-text-muted" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
@@ -164,7 +164,7 @@ export default function SearchBar() {
       </div>
 
       {showDropdown && (
-        <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] shadow-lg">
+        <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-bg-surface shadow-lg">
           {renderDropdownBody()}
         </div>
       )}

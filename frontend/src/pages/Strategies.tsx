@@ -52,27 +52,27 @@ export default function Strategies() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">
+        <h2 className="text-lg font-semibold text-text-primary">
           Strategies
         </h2>
-        <p className="text-sm text-[var(--color-text-muted)]">
+        <p className="text-sm text-text-muted">
           All available strategies — start the ones you want to run
         </p>
       </div>
 
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] overflow-hidden">
+      <div className="rounded-xl border border-border bg-bg-surface overflow-hidden">
         {isLoading ? (
-          <div className="flex h-40 items-center justify-center text-sm text-[var(--color-text-muted)]">
+          <div className="flex h-40 items-center justify-center text-sm text-text-muted">
             Loading strategies…
           </div>
         ) : rows.length === 0 ? (
-          <div className="flex h-40 items-center justify-center text-sm text-[var(--color-text-muted)]">
+          <div className="flex h-40 items-center justify-center text-sm text-text-muted">
             No strategies found in the strategies folder.
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[var(--color-border)] text-left text-xs font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+              <tr className="border-b border-border text-left text-xs font-medium uppercase tracking-wider text-text-muted">
                 <th className="px-5 py-3">Name</th>
                 <th className="px-5 py-3">Status</th>
                 <th className="px-5 py-3">Mode</th>
@@ -83,15 +83,15 @@ export default function Strategies() {
                 <th className="px-5 py-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[var(--color-border)]">
+            <tbody className="divide-y divide-border">
               {rows.map((s) => {
                 const isBusy = !!pending[s.name];
                 return (
                   <tr
                     key={s.name}
-                    className="transition hover:bg-[var(--color-bg-elevated)]"
+                    className="transition hover:bg-bg-elevated"
                   >
-                    <td className="px-5 py-3.5 font-medium text-[var(--color-text-primary)]">
+                    <td className="px-5 py-3.5 font-medium text-text-primary">
                       {s.name}
                     </td>
                     <td className="px-5 py-3.5">
@@ -100,16 +100,16 @@ export default function Strategies() {
                     <td className="px-5 py-3.5">
                       <StatusBadge variant={s.paper_trade ? "paper" : "live"} />
                     </td>
-                    <td className="px-5 py-3.5 text-[var(--color-text-muted)]">
+                    <td className="px-5 py-3.5 text-text-muted">
                       {s.instruments.join(", ") || "—"}
                     </td>
-                    <td className="px-5 py-3.5 text-[var(--color-text-muted)]">
+                    <td className="px-5 py-3.5 text-text-muted">
                       {s.timeframe}
                     </td>
-                    <td className="px-5 py-3.5 text-right text-[var(--color-text-muted)]">
+                    <td className="px-5 py-3.5 text-right text-text-muted">
                       {s.liveData ? s.liveData.trades_today : "—"}
                     </td>
-                    <td className="px-5 py-3.5 text-right text-[var(--color-text-muted)]">
+                    <td className="px-5 py-3.5 text-right text-text-muted">
                       {s.liveData ? s.liveData.open_positions : "—"}
                     </td>
                     <td className="px-5 py-3.5">
@@ -157,9 +157,9 @@ function ActionBtn({
   onClick: () => void;
 }) {
   const colorMap = {
-    profit: "text-[var(--color-profit)] hover:bg-[var(--color-profit)]/10 border-[var(--color-profit)]/30",
-    paper:  "text-[var(--color-paper)]  hover:bg-[var(--color-paper)]/10  border-[var(--color-paper)]/30",
-    loss:   "text-[var(--color-loss)]   hover:bg-[var(--color-loss)]/10   border-[var(--color-loss)]/30",
+    profit: "text-profit hover:bg-profit/10 border-profit/30",
+    paper:  "text-paper  hover:bg-paper/10  border-paper/30",
+    loss:   "text-loss   hover:bg-loss/10   border-loss/30",
   };
   return (
     <button

@@ -24,14 +24,14 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
+      <div className="rounded-xl border border-border bg-bg-surface p-5">
         <div className="animate-pulse space-y-3">
-          <div className="h-8 w-32 rounded bg-[var(--color-bg-elevated)]" />
+          <div className="h-8 w-32 rounded bg-bg-elevated" />
           <div className="flex gap-6">
             {Array.from({ length: 5 }).map((_, i) => (
               <div
                 key={i}
-                className="h-4 w-16 rounded bg-[var(--color-bg-elevated)]"
+                className="h-4 w-16 rounded bg-bg-elevated"
               />
             ))}
           </div>
@@ -44,8 +44,8 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
     const msg = (error as Error).message;
     const isNotAuth = msg.includes("not_authenticated") || msg.includes("503");
     return (
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
-        <p className="text-sm text-[var(--color-text-muted)]">
+      <div className="rounded-xl border border-border bg-bg-surface p-5">
+        <p className="text-sm text-text-muted">
           {isNotAuth
             ? "Login to Kite to see live quote data."
             : `Quote unavailable: ${msg}`}
@@ -70,29 +70,29 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
   const changeColor = isUp ? "var(--color-profit)" : "var(--color-loss)";
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-5">
+    <div className="rounded-xl border border-border bg-bg-surface p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-[var(--color-text-muted)]">
+            <p className="text-xs text-text-muted">
               {data.exchange}
             </p>
             {isNotAuth ? (
-              <span className="text-[10px] text-[var(--color-text-muted)]">
+              <span className="text-[10px] text-text-muted">
                 ● Login to Kite for live feed
               </span>
             ) : liveTick ? (
-              <span className="text-[10px] text-[var(--color-profit)]">
+              <span className="text-[10px] text-profit">
                 ● Live
               </span>
             ) : null}
           </div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+          <h1 className="text-2xl font-bold text-text-primary">
             {data.symbol}
           </h1>
         </div>
         <div className="text-right">
-          <p className="text-3xl font-semibold tabular-nums text-[var(--color-text-primary)]">
+          <p className="text-3xl font-semibold tabular-nums text-text-primary">
             ₹{ltp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </p>
           <p className="text-sm tabular-nums" style={{ color: changeColor }}>
@@ -101,7 +101,7 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
           </p>
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-5 gap-3 border-t border-[var(--color-border)] pt-4">
+      <div className="mt-4 grid grid-cols-5 gap-3 border-t border-border pt-4">
         {[
           { label: "Open", value: data.open },
           { label: "High", value: data.high },
@@ -110,10 +110,10 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
           { label: "Volume", value: null, raw: volume.toLocaleString("en-IN") },
         ].map(({ label, value, raw }) => (
           <div key={label}>
-            <p className="text-[10px] text-[var(--color-text-muted)]">
+            <p className="text-[10px] text-text-muted">
               {label}
             </p>
-            <p className="text-sm font-medium tabular-nums text-[var(--color-text-primary)]">
+            <p className="text-sm font-medium tabular-nums text-text-primary">
               {raw ??
                 `₹${value?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
             </p>
@@ -147,7 +147,7 @@ function ExpirySection({
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="h-7 w-24 animate-pulse rounded-full bg-[var(--color-bg-elevated)]"
+            className="h-7 w-24 animate-pulse rounded-full bg-bg-elevated"
           />
         ))}
       </div>
@@ -158,7 +158,7 @@ function ExpirySection({
     const msg = (error as Error).message;
     const isNotAuth = msg.includes("not_authenticated") || msg.includes("503");
     return (
-      <p className="text-sm text-[var(--color-text-muted)]">
+      <p className="text-sm text-text-muted">
         {isNotAuth
           ? "Login to Kite to see expiries."
           : `Could not load expiries: ${msg}`}
@@ -170,7 +170,7 @@ function ExpirySection({
 
   if (expiries.length === 0) {
     return (
-      <p className="text-sm text-[var(--color-text-muted)]">
+      <p className="text-sm text-text-muted">
         No F&amp;O contracts available for this symbol.
       </p>
     );
@@ -191,8 +191,8 @@ function ExpirySection({
             onClick={() => onSelect(exp)}
             className={`rounded-full px-3 py-1 text-xs font-medium transition ${
               isActive
-                ? "bg-[var(--color-accent)] text-white"
-                : "border border-[var(--color-border)] bg-[var(--color-bg-elevated)] text-[var(--color-text-muted)] hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+                ? "bg-accent text-white"
+                : "border border-border bg-bg-elevated text-text-muted hover:border-accent hover:text-accent"
             }`}
           >
             {label}
@@ -227,7 +227,7 @@ function OptionChainTable({
         {Array.from({ length: 8 }).map((_, i) => (
           <div
             key={i}
-            className="h-8 animate-pulse rounded bg-[var(--color-bg-elevated)]"
+            className="h-8 animate-pulse rounded bg-bg-elevated"
           />
         ))}
       </div>
@@ -237,8 +237,8 @@ function OptionChainTable({
   if (error) {
     const msg = (error as Error).message;
     return (
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-6 text-center">
-        <p className="text-sm text-[var(--color-text-muted)]">
+      <div className="rounded-lg border border-border bg-bg-surface p-6 text-center">
+        <p className="text-sm text-text-muted">
           {msg.includes("No option chain")
             ? "Option chain not available for this expiry."
             : `Could not load option chain: ${msg}`}
@@ -250,8 +250,8 @@ function OptionChainTable({
   const chain = data?.chain ?? [];
   if (chain.length === 0) {
     return (
-      <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-6 text-center">
-        <p className="text-sm text-[var(--color-text-muted)]">
+      <div className="rounded-lg border border-border bg-bg-surface p-6 text-center">
+        <p className="text-sm text-text-muted">
           Option chain is empty for this expiry.
         </p>
       </div>
@@ -271,38 +271,38 @@ function OptionChainTable({
       : null;
 
   return (
-    <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
+    <div className="overflow-x-auto rounded-xl border border-border">
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
+          <tr className="border-b border-border bg-bg-elevated">
             <th
               colSpan={2}
-              className="px-4 py-2 text-center text-[var(--color-profit)] font-semibold"
+              className="px-4 py-2 text-center text-profit font-semibold"
             >
               CALL
             </th>
-            <th className="px-4 py-2 text-center font-semibold text-[var(--color-text-primary)]">
+            <th className="px-4 py-2 text-center font-semibold text-text-primary">
               Strike
             </th>
             <th
               colSpan={2}
-              className="px-4 py-2 text-center text-[var(--color-loss)] font-semibold"
+              className="px-4 py-2 text-center text-loss font-semibold"
             >
               PUT
             </th>
           </tr>
-          <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]">
-            <th className="px-4 py-1.5 text-right text-[var(--color-text-muted)] font-medium">
+          <tr className="border-b border-border bg-bg-surface">
+            <th className="px-4 py-1.5 text-right text-text-muted font-medium">
               LTP
             </th>
-            <th className="px-4 py-1.5 text-right text-[var(--color-text-muted)] font-medium">
+            <th className="px-4 py-1.5 text-right text-text-muted font-medium">
               Symbol
             </th>
-            <th className="px-4 py-1.5 text-center text-[var(--color-text-muted)] font-medium" />
-            <th className="px-4 py-1.5 text-left text-[var(--color-text-muted)] font-medium">
+            <th className="px-4 py-1.5 text-center text-text-muted font-medium" />
+            <th className="px-4 py-1.5 text-left text-text-muted font-medium">
               Symbol
             </th>
-            <th className="px-4 py-1.5 text-left text-[var(--color-text-muted)] font-medium">
+            <th className="px-4 py-1.5 text-left text-text-muted font-medium">
               LTP
             </th>
           </tr>
@@ -313,37 +313,37 @@ function OptionChainTable({
             return (
               <tr
                 key={row.strike}
-                className={`border-b border-[var(--color-border)] last:border-0 transition-colors ${
+                className={`border-b border-border last:border-0 transition-colors ${
                   isAtm
-                    ? "bg-[var(--color-accent)]/5 font-semibold"
-                    : "bg-[var(--color-bg-surface)] hover:bg-[var(--color-bg-elevated)]"
+                    ? "bg-accent/5 font-semibold"
+                    : "bg-bg-surface hover:bg-bg-elevated"
                 }`}
               >
                 {/* CE LTP */}
-                <td className="px-4 py-2 text-right tabular-nums text-[var(--color-profit)]">
+                <td className="px-4 py-2 text-right tabular-nums text-profit">
                   {row.ce ? row.ce.ltp.toFixed(2) : "—"}
                 </td>
                 {/* CE Symbol */}
-                <td className="px-4 py-2 text-right text-[var(--color-text-muted)]">
+                <td className="px-4 py-2 text-right text-text-muted">
                   {row.ce?.tradingsymbol ?? "—"}
                 </td>
                 {/* Strike */}
                 <td
-                  className={`px-4 py-2 text-center tabular-nums ${isAtm ? "text-[var(--color-accent)]" : "text-[var(--color-text-primary)]"}`}
+                  className={`px-4 py-2 text-center tabular-nums ${isAtm ? "text-accent" : "text-text-primary"}`}
                 >
                   {row.strike.toLocaleString("en-IN")}
                   {isAtm && (
-                    <span className="ml-1 text-[9px] font-bold text-[var(--color-accent)]">
+                    <span className="ml-1 text-[9px] font-bold text-accent">
                       ATM
                     </span>
                   )}
                 </td>
                 {/* PE Symbol */}
-                <td className="px-4 py-2 text-left text-[var(--color-text-muted)]">
+                <td className="px-4 py-2 text-left text-text-muted">
                   {row.pe?.tradingsymbol ?? "—"}
                 </td>
                 {/* PE LTP */}
-                <td className="px-4 py-2 text-left tabular-nums text-[var(--color-loss)]">
+                <td className="px-4 py-2 text-left tabular-nums text-loss">
                   {row.pe ? row.pe.ltp.toFixed(2) : "—"}
                 </td>
               </tr>

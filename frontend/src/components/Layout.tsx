@@ -54,17 +54,17 @@ export default function Layout() {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--color-bg-base)]">
+    <div className="flex h-screen overflow-hidden bg-bg-base">
       {/* Sidebar */}
-      <aside className="flex w-56 flex-col border-r border-[var(--color-border)] bg-[var(--color-bg-surface)]">
+      <aside className="flex w-56 flex-col border-r border-border bg-bg-surface">
         {/* Brand */}
-        <div className="flex h-14 items-center gap-2.5 border-b border-[var(--color-border)] px-4">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--color-accent)]">
+        <div className="flex h-14 items-center gap-2.5 border-b border-border px-4">
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent">
             <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
             </svg>
           </div>
-          <span className="text-sm font-semibold text-[var(--color-text-primary)]">
+          <span className="text-sm font-semibold text-text-primary">
             Kite Trader
           </span>
         </div>
@@ -79,8 +79,8 @@ export default function Layout() {
               className={({ isActive }) =>
                 `mb-0.5 flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition ${
                   isActive
-                    ? "bg-[var(--color-accent)]/10 text-[var(--color-accent)] font-medium"
-                    : "text-[var(--color-text-muted)] hover:bg-[var(--color-bg-elevated)] hover:text-[var(--color-text-primary)]"
+                    ? "bg-accent/10 text-accent font-medium"
+                    : "text-text-muted hover:bg-bg-elevated hover:text-text-primary"
                 }`
               }
             >
@@ -91,23 +91,23 @@ export default function Layout() {
         </nav>
 
         {/* User footer */}
-        <div className="border-t border-[var(--color-border)] p-3">
+        <div className="border-t border-border p-3">
           <div className="mb-2 flex items-center gap-2 px-1">
-            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-accent)]/20 text-xs font-medium text-[var(--color-accent)]">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-accent/20 text-xs font-medium text-accent">
               {user?.user_name?.charAt(0).toUpperCase() ?? "U"}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-[var(--color-text-primary)]">
+              <p className="truncate text-xs font-medium text-text-primary">
                 {user?.user_name ?? "—"}
               </p>
-              <p className="truncate text-[10px] text-[var(--color-text-muted)]">
+              <p className="truncate text-[10px] text-text-muted">
                 {user?.user_id}
               </p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-[var(--color-text-muted)] transition hover:bg-[var(--color-bg-elevated)] hover:text-red-400"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-xs text-text-muted transition hover:bg-bg-elevated hover:text-red-400"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 9V5.25A2.25 2.25 0 0 1 10.5 3h6a2.25 2.25 0 0 1 2.25 2.25v13.5A2.25 2.25 0 0 1 16.5 21h-6a2.25 2.25 0 0 1-2.25-2.25V15m-3 0-3-3m0 0 3-3m-3 3H15" />
@@ -120,8 +120,8 @@ export default function Layout() {
       {/* Main area */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top bar */}
-        <header className="flex h-14 items-center gap-4 border-b border-[var(--color-border)] bg-[var(--color-bg-surface)] px-6">
-          <span className="shrink-0 text-sm font-medium text-[var(--color-text-muted)]">
+        <header className="flex h-14 items-center gap-4 border-b border-border bg-bg-surface px-6">
+          <span className="shrink-0 text-sm font-medium text-text-muted">
             {new Date().toLocaleDateString("en-IN", {
               weekday: "long",
               year: "numeric",
@@ -134,14 +134,14 @@ export default function Layout() {
             <SearchBar />
           </div>
           {/* WS status */}
-          <div className="flex shrink-0 items-center gap-2 text-xs text-[var(--color-text-muted)]">
+          <div className="flex shrink-0 items-center gap-2 text-xs text-text-muted">
             <span
               className={`h-2 w-2 rounded-full ${
                 status === "connected"
-                  ? "bg-[var(--color-profit)] shadow-[0_0_6px_var(--color-profit)]"
+                  ? "bg-profit shadow-[0_0_6px_profit]"
                   : status === "connecting"
-                  ? "bg-[var(--color-paper)] animate-pulse"
-                  : "bg-[var(--color-loss)]"
+                  ? "bg-paper animate-pulse"
+                  : "bg-loss"
               }`}
             />
             {status === "connected"

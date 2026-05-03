@@ -17,6 +17,8 @@ class BaseStrategy(ABC):
         # Injected by StrategyLoader — used by subscribe_instrument()
         self._data_feed = None
         self._instrument_cache = None
+        # Injected by StrategyLoader — shared CandleStore for historical + live OHLCV
+        self.candles = None
 
     @abstractmethod
     def on_candle(self, symbol: str, candle: dict) -> None:
@@ -69,6 +71,12 @@ class BaseStrategy(ABC):
 
     def get_capital_allocation(self) -> float:
         return self.config.get("capital_allocation", 0.10)
+
+    def get_lookback(self) -> int:
+        return self.config.get("lookback_candles", 200)
+
+    def get_exchange(self) -> str:
+        return self.config.get("exchange", "NSE")
 
     def subscribe_instrument(self, symbol: str, exchange: str) -> None:
         """Subscribe to an instrument beyond the YAML instruments list. Call from on_start()."""

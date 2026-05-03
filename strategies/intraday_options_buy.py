@@ -38,7 +38,6 @@ class IntradayOptionsBuy(BaseStrategy):
 
     def __init__(self, config, broker, state, logger):
         super().__init__(config, broker, state, logger)
-        self._candle_history: dict[str, list] = {}
         self._trades_today = 0
         self._open_positions: dict[str, dict] = {}
 
@@ -82,10 +81,7 @@ class IntradayOptionsBuy(BaseStrategy):
 
     def on_candle(self, symbol: str, candle: dict) -> None:
         try:
-            history = self._candle_history.setdefault(symbol, [])
-            history.append(candle)
-            if len(history) > 200:
-                history.pop(0)
+            history = self.candles.history(symbol, self.get_timeframe(), n=self.get_lookback()) if self.candles else []
 
             max_trades = self.config.get("max_trades_per_day", 4)
             max_positions = self.config.get("max_open_positions", 2)

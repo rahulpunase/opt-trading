@@ -10,6 +10,8 @@ timeframe: 5min
 order_type: MIS
 exchange: NFO
 
+lookback_candles: 200
+
 capital_allocation: 0.20
 max_trades_per_day: 4
 max_open_positions: 2

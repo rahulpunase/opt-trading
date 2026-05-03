@@ -1,34 +1,41 @@
 import asyncio
 import logging
-from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime
+from typing import Optional
 from zoneinfo import ZoneInfo
 
 from kiteconnect import KiteTicker
 
+from core.candles import TIMEFRAME_SECONDS  # re-exported for back-compat
+
 logger = logging.getLogger("data_feed")
 IST = ZoneInfo("Asia/Kolkata")
 
-TIMEFRAME_SECONDS = {
-    "1min": 60,
-    "5min": 300,
-    "15min": 900,
-    "daily": 86400,
-}
-
 
 class DataFeed:
-    def __init__(self, api_key: str, access_token: str, event_bus, instrument_tokens: list[int]):
+    def __init__(
+        self,
+        api_key: str,
+        access_token: str,
+        event_bus,
+        instrument_tokens: list[int],
+        candle_store=None,
+    ):
         self._api_key = api_key
         self._access_token = access_token
         self._event_bus = event_bus
+        self._candle_store = candle_store
         self._tokens = list(instrument_tokens)
         self._strategy_tokens: set[int] = set(instrument_tokens)  # never unsubscribed by UI
         self._ticker: KiteTicker = None
-        self._loop = None
-        self._candles: dict = defaultdict(lambda: defaultdict(dict))
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._token_to_symbol: dict[int, str] = {}
         self._dynamic_refcount: dict[int, int] = {}
+
+    def set_candle_store(self, candle_store) -> None:
+        self._candle_store = candle_store
+        if self._loop is not None:
+            candle_store.set_loop(self._loop)
 
     def set_token_symbol_map(self, mapping: dict[int, str]):
         self._token_to_symbol = mapping
@@ -36,7 +43,8 @@ class DataFeed:
     def start(self):
         # Capture the running event loop before spawning the ticker thread
         self._loop = asyncio.get_event_loop()
-        # print api key and access token
+        if self._candle_store is not None:
+            self._candle_store.set_loop(self._loop)
         logger.info("DataFeed: starting with api_key=%s access_token=%s", self._api_key, self._access_token)
         self._ticker = KiteTicker(
             self._api_key,
@@ -121,38 +129,5 @@ class DataFeed:
                 self._loop,
             )
 
-            for tf, tf_seconds in TIMEFRAME_SECONDS.items():
-                self._aggregate_candle(symbol, tf, tf_seconds, last_price, volume, ts)
-
-    def _aggregate_candle(self, symbol: str, tf: str, tf_seconds: int, price: float, volume: int, ts: datetime):
-        bucket = int(ts.timestamp() // tf_seconds) * tf_seconds
-        state = self._candles[symbol][tf]
-
-        if state.get("bucket") != bucket:
-            if state.get("bucket") is not None:
-                closed_candle = {
-                    "symbol": symbol,
-                    "open": state["open"],
-                    "high": state["high"],
-                    "low": state["low"],
-                    "close": state["close"],
-                    "volume": state["volume"],
-                    "timestamp": datetime.fromtimestamp(state["bucket"], tz=IST),
-                }
-                asyncio.run_coroutine_threadsafe(
-                    self._event_bus.emit_candle(symbol, tf, closed_candle),
-                    self._loop,
-                )
-            self._candles[symbol][tf] = {
-                "bucket": bucket,
-                "open": price,
-                "high": price,
-                "low": price,
-                "close": price,
-                "volume": volume,
-            }
-        else:
-            state["high"] = max(state["high"], price)
-            state["low"] = min(state["low"], price)
-            state["close"] = price
-            state["volume"] += volume
+            if self._candle_store is not None:
+                self._candle_store.ingest_tick(symbol, last_price, volume, ts)

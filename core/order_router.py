@@ -15,6 +15,10 @@ class OrderRouter:
         self._rate_limit = 10  # orders per second
         self._instrument_cache: dict[str, list] = {}
 
+    @property
+    def kite(self):
+        return self._kite
+
     def _throttle(self):
         now = time.monotonic()
         self._last_order_times = [t for t in self._last_order_times if now - t < 1.0]

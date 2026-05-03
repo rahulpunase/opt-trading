@@ -18,6 +18,7 @@ from kiteconnect import KiteConnect
 from pydantic import BaseModel
 
 from alerts.telegram import send_alert, start_bot, stop_bot
+from core.candles import CandleStore
 from core.data_feed import DataFeed
 from core.event_bus import EventBus
 from core.instrument_cache import InstrumentCache
@@ -47,6 +48,7 @@ _loader: StrategyLoader = None
 _running_strategies: dict = {}
 _data_feed: DataFeed = None
 _instrument_cache: InstrumentCache = None
+_candle_store: CandleStore = None
 
 # Nearest F&O expiries to return for /instruments/{token}/expiries
 MAX_SYMBOL_EXPIRIES = 5
@@ -57,7 +59,7 @@ MAX_OPTION_CHAIN_STRIKES_EACH_SIDE = 25
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _redis, _kite, _broker, _event_bus, _risk_gate, _loader, _instrument_cache, _data_feed
+    global _redis, _kite, _broker, _event_bus, _risk_gate, _loader, _instrument_cache, _data_feed, _candle_store
 
     _redis = make_redis_client()
     _kite = KiteConnect(api_key=os.getenv("KITE_API_KEY", ""))
@@ -93,14 +95,17 @@ async def lifespan(app: FastAPI):
     # If we already have a valid access token, start the ticker immediately
     if stored_token:
         try:
+            _candle_store = CandleStore(_kite, _instrument_cache, _event_bus)
             _data_feed = DataFeed(
                 api_key=os.getenv("KITE_API_KEY", ""),
                 access_token=access_token,
                 event_bus=_event_bus,
                 instrument_tokens=[],
+                candle_store=_candle_store,
             )
             _data_feed.start()
             _loader.set_data_feed(_data_feed)
+            _loader.set_candle_store(_candle_store)
             logger.info("DataFeed started from restored access_token")
         except Exception as e:
             logger.warning("DataFeed could not start on startup: %s", e)
@@ -165,14 +170,18 @@ async def auth(request_token: str):
 
         if _data_feed:
             _data_feed.stop()
+        global _candle_store
+        _candle_store = CandleStore(_kite, _instrument_cache, _event_bus)
         _data_feed = DataFeed(
             api_key=os.getenv("KITE_API_KEY", ""),
             access_token=access_token,
             event_bus=_event_bus,
             instrument_tokens=[],
+            candle_store=_candle_store,
         )
         _data_feed.start()
         _loader.set_data_feed(_data_feed)
+        _loader.set_candle_store(_candle_store)
 
         return {
             "status": "ok",
@@ -253,6 +262,19 @@ async def start_strategy(req: StrategyRequest):
         return {"status": "already_running", "name": req.name}
     try:
         s = _loader.load_by_name(req.name)
+
+        if _candle_store is not None:
+            tf = s.get_timeframe()
+            exchange = s.get_exchange()
+            lookback = s.get_lookback()
+            warmup_results = await asyncio.gather(
+                *[_candle_store.warmup(sym, exchange, tf, lookback) for sym in s.get_instruments()],
+                return_exceptions=True,
+            )
+            for sym, res in zip(s.get_instruments(), warmup_results):
+                if isinstance(res, Exception):
+                    logger.warning("Warmup failed for %s/%s: %s", exchange, sym, res)
+
         s.on_start()
         _event_bus.register(s)
         _running_strategies[s.name] = s

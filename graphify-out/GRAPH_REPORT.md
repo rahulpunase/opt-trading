@@ -1,7 +1,7 @@
 # Graph Report - /Users/macbookpro/Documents/projects/trading/opt-trading  (2026-05-03)
 
 ## Corpus Check
-- 40 files · ~56,657 words
+- 40 files · ~60,850 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary

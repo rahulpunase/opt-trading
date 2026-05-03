@@ -1,12 +1,12 @@
 # Graph Report - /Users/macbookpro/Documents/projects/trading/opt-trading  (2026-05-03)
 
 ## Corpus Check
-- 40 files · ~56,126 words
+- 40 files · ~56,657 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 404 nodes · 815 edges · 53 communities detected
-- Extraction: 51% EXTRACTED · 49% INFERRED · 0% AMBIGUOUS · INFERRED: 396 edges (avg confidence: 0.67)
+- 434 nodes · 933 edges · 62 communities detected
+- Extraction: 46% EXTRACTED · 54% INFERRED · 0% AMBIGUOUS · INFERRED: 501 edges (avg confidence: 0.64)
 - Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
@@ -63,30 +63,39 @@
 - [[_COMMUNITY_Community 50|Community 50]]
 - [[_COMMUNITY_Community 51|Community 51]]
 - [[_COMMUNITY_Community 52|Community 52]]
+- [[_COMMUNITY_Community 53|Community 53]]
+- [[_COMMUNITY_Community 54|Community 54]]
+- [[_COMMUNITY_Community 55|Community 55]]
+- [[_COMMUNITY_Community 56|Community 56]]
+- [[_COMMUNITY_Community 57|Community 57]]
+- [[_COMMUNITY_Community 58|Community 58]]
+- [[_COMMUNITY_Community 59|Community 59]]
+- [[_COMMUNITY_Community 60|Community 60]]
+- [[_COMMUNITY_Community 61|Community 61]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `InstrumentCache` - 43 edges
-2. `EventBus` - 43 edges
-3. `DataFeed` - 39 edges
-4. `StrategyLoader` - 39 edges
-5. `OrderRouter` - 36 edges
-6. `RiskGate` - 34 edges
-7. `CandleStore` - 28 edges
+1. `InstrumentCache` - 58 edges
+2. `EventBus` - 57 edges
+3. `DataFeed` - 53 edges
+4. `StrategyLoader` - 53 edges
+5. `OrderRouter` - 50 edges
+6. `RiskGate` - 48 edges
+7. `CandleStore` - 42 edges
 8. `StrategyState` - 26 edges
-9. `BaseStrategy` - 24 edges
-10. `NiftyExpiryStraddle` - 20 edges
+9. `BaseStrategy` - 25 edges
+10. `lifespan()` - 21 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `CandleStore` --uses--> `Resolve a cached instrument to (fno_exchange, fno_underlying_name) for expiry /`  [INFERRED]
-  /Users/macbookpro/Documents/projects/trading/opt-trading/core/candles.py → api/main.py
-- `CandleStore` --uses--> `Best-effort underlying last price for ATM selection, looked up directly by instr`  [INFERRED]
-  /Users/macbookpro/Documents/projects/trading/opt-trading/core/candles.py → api/main.py
+- `StrategyState` --uses--> `Called after /auth when DataFeed is started — injected into all subsequently loa`  [INFERRED]
+  /Users/macbookpro/Documents/projects/trading/opt-trading/core/state.py → core/strategy_loader.py
+- `StrategyState` --uses--> `Resolve the strategy's `instruments` list to Kite instrument_tokens.         Fal`  [INFERRED]
+  /Users/macbookpro/Documents/projects/trading/opt-trading/core/state.py → core/strategy_loader.py
 - `BaseStrategy` --uses--> `Called after /auth when DataFeed is started — injected into all subsequently loa`  [INFERRED]
   /Users/macbookpro/Documents/projects/trading/opt-trading/core/base_strategy.py → core/strategy_loader.py
 - `BaseStrategy` --uses--> `Resolve the strategy's `instruments` list to Kite instrument_tokens.         Fal`  [INFERRED]
   /Users/macbookpro/Documents/projects/trading/opt-trading/core/base_strategy.py → core/strategy_loader.py
-- `BaseStrategy` --uses--> `PositionalFutures`  [INFERRED]
-  /Users/macbookpro/Documents/projects/trading/opt-trading/core/base_strategy.py → strategies/positional_futures.py
+- `BaseStrategy` --uses--> `NiftyExpiryStraddle`  [INFERRED]
+  /Users/macbookpro/Documents/projects/trading/opt-trading/core/base_strategy.py → strategies/nifty_expiry_straddle.py
 
 ## Hyperedges (group relationships)
 - **Core Event Pipeline: data_feed -> event_bus -> strategies** — claude_data_feed, claude_event_bus, claude_basestrategy_on_candle, claude_basestrategy_on_tick, claude_basestrategy_on_market_open, claude_basestrategy_on_market_close [EXTRACTED 0.95]
@@ -96,44 +105,44 @@
 ## Communities
 
 ### Community 0 - "Community 0"
-Cohesion: 0.07
-Nodes (46): BaseModel, DataFeed, EventBus, InstrumentCache, Bulk-resolve a list of symbols for one exchange. Skips unknowns., Return the full instrument dict for a given token., Translate an index tradingsymbol to its F&O exchange + name.         E.g. ("NIFT, Return today's JSON file path if it exists, else None. (+38 more)
+Cohesion: 0.08
+Nodes (57): BaseModel, CandleStore, DataFeed, EventBus, InstrumentCache, Return the full instrument dict for a given token., Translate an index tradingsymbol to its F&O exchange + name.         E.g. ("NIFT, Return today's JSON file path if it exists, else None. (+49 more)
 
 ### Community 1 - "Community 1"
 Cohesion: 0.06
-Nodes (41): alerts/telegram.py — Telegram Bot Notifications, api/main.py — FastAPI Control Plane, BaseStrategy Abstract Contract, BaseStrategy.on_candle Abstract Method, BaseStrategy.on_market_close Hook, BaseStrategy.on_market_open Hook, BaseStrategy.on_order_update Abstract Method, BaseStrategy.on_start Hook (+33 more)
+Nodes (10): ABC, BaseStrategy, BaseStrategy, Return last n closed candles (historical + live), oldest first. Returns a list c, IntradayOptionsBuy, Intraday options buying strategy using EMA crossover + RSI confirmation.      Si, PositionalFutures, PositionalFutures — EMA crossover trend-following strategy for F&O futures.  Sig (+2 more)
 
 ### Community 2 - "Community 2"
-Cohesion: 0.08
-Nodes (4): BaseStrategy, IntradayOptionsBuy, Intraday options buying strategy using EMA crossover + RSI confirmation.      Si, PositionalFutures
+Cohesion: 0.07
+Nodes (20): request(), fetch(), Called by DataFeed for every tick. Aggregates only into timeframes that have bee, Fuzzy search across tradingsymbol and name fields using rapidfuzz., Prefix search across tradingsymbols. Returns up to 50 results., auth_status(), _build_ws_payload(), get_positions() (+12 more)
 
 ### Community 3 - "Community 3"
-Cohesion: 0.1
-Nodes (16): Fuzzy search across tradingsymbol and name fields using rapidfuzz., Prefix search across tradingsymbols. Returns up to 50 results., auth_status(), _build_ws_payload(), get_positions(), get_trades(), instruments_search(), instruments_underlyings() (+8 more)
+Cohesion: 0.06
+Nodes (41): alerts/telegram.py — Telegram Bot Notifications, api/main.py — FastAPI Control Plane, BaseStrategy Abstract Contract, BaseStrategy.on_candle Abstract Method, BaseStrategy.on_market_close Hook, BaseStrategy.on_market_open Hook, BaseStrategy.on_order_update Abstract Method, BaseStrategy.on_start Hook (+33 more)
 
 ### Community 4 - "Community 4"
-Cohesion: 0.09
-Nodes (11): auth(), auth_logout(), lifespan(), make_redis_client(), StrategyState, Called after /auth when DataFeed is started — injected into all subsequently loa, Called after /auth when CandleStore is constructed., send_alert() (+3 more)
+Cohesion: 0.08
+Nodes (17): Capture the loop so ingest_tick (called from KiteTicker thread) can dispatch cor, auth(), auth_logout(), _auto_restart_strategies(), lifespan(), Load, warm up, and register a strategy. Raises on failure., Re-start any strategies recorded as running before the last shutdown., _start_strategy() (+9 more)
 
 ### Community 5 - "Community 5"
-Cohesion: 0.11
-Nodes (5): ABC, BaseStrategy, start_strategy(), Resolve the strategy's `instruments` list to Kite instrument_tokens.         Fal, Called after /auth when DataFeed is started — injected into all subsequently loa
+Cohesion: 0.1
+Nodes (11): Subscribe to an instrument beyond the YAML instruments list. Call from on_start(, _bucket_start(), _market_open_today(), Shared OHLCV candle store with historical backfill + live aggregation.  Single s, Idempotent backfill via kite.historical_data. Returns number of candles loaded., Dynamically subscribe to a token. Reference-counted so multiple consumers share, Decrement refcount; unsubscribe from KiteTicker when no consumers remain., Resolve a symbol+exchange pair to an instrument_token. (+3 more)
 
 ### Community 6 - "Community 6"
-Cohesion: 0.11
-Nodes (8): _bucket_start(), CandleStore, _market_open_today(), Shared OHLCV candle store with historical backfill + live aggregation.  Single s, Called by DataFeed for every tick. Aggregates only into timeframes that have bee, Return last n closed candles (historical + live), oldest first. Returns a list c, Capture the loop so ingest_tick (called from KiteTicker thread) can dispatch cor, Idempotent backfill via kite.historical_data. Returns number of candles loaded.
+Cohesion: 0.19
+Nodes (1): NiftyExpiryStraddle
 
 ### Community 7 - "Community 7"
-Cohesion: 0.2
-Nodes (1): NiftyExpiryStraddle
+Cohesion: 0.15
+Nodes (1): StrategyState
 
 ### Community 8 - "Community 8"
 Cohesion: 0.12
 Nodes (10): _expiry_str(), Build in-memory lookup structures and swap them in atomically., Convert Kite instrument dicts to a JSON-serialisable form., Write instruments to today's JSON cache file atomically., Group a flat instrument list by segment → name → instrument_type, sorted by expi, Reconstruct a flat instrument list from the grouped file structure., Delete instrument JSON files from previous days., Normalise expiry to ISO string regardless of whether it's a date or already a st (+2 more)
 
 ### Community 9 - "Community 9"
-Cohesion: 0.15
-Nodes (7): Subscribe to an instrument beyond the YAML instruments list. Call from on_start(, Dynamically subscribe to a token. Reference-counted so multiple consumers share, Decrement refcount; unsubscribe from KiteTicker when no consumers remain., Resolve a symbol+exchange pair to an instrument_token., instruments_lookup(), Multiplexed real-time tick stream. Client sends subscribe/unsubscribe JSON messa, ws_quotes()
+Cohesion: 0.17
+Nodes (3): Bulk-resolve a list of symbols for one exchange. Skips unknowns., Translate an index tradingsymbol to its F&O exchange + name.         E.g. ("NIFT, Resolve the strategy's `instruments` list to Kite instrument_tokens.         Fal
 
 ### Community 10 - "Community 10"
 Cohesion: 0.29
@@ -148,20 +157,20 @@ Cohesion: 0.4
 Nodes (2): useQuoteContext(), useSymbolQuote()
 
 ### Community 13 - "Community 13"
-Cohesion: 0.5
-Nodes (2): request(), fetch()
-
-### Community 14 - "Community 14"
 Cohesion: 0.67
 Nodes (0): 
 
-### Community 15 - "Community 15"
+### Community 14 - "Community 14"
 Cohesion: 0.67
 Nodes (3): Asyncio Over time.sleep Rule, Coding Rules for Claude Code, IST Timezone Enforcement Rule
 
-### Community 16 - "Community 16"
+### Community 15 - "Community 15"
 Cohesion: 0.67
 Nodes (3): Platform Favicon — Lightning Bolt / Layered Stack Logo (Purple Gradient), Hero Image — Isometric Layered Stack / Platform Abstraction Diagram, Frontend Entry Point (index.html)
+
+### Community 16 - "Community 16"
+Cohesion: 1.0
+Nodes (0): 
 
 ### Community 17 - "Community 17"
 Cohesion: 1.0
@@ -257,59 +266,97 @@ Nodes (0):
 
 ### Community 40 - "Community 40"
 Cohesion: 1.0
-Nodes (1): Called every time a new candle closes for a subscribed symbol.         candle =
+Nodes (1): Return the full instrument dict for a given token.
 
 ### Community 41 - "Community 41"
 Cohesion: 1.0
-Nodes (1): Called on every live price tick for subscribed instruments.         tick = {"ins
+Nodes (1): Fuzzy search across tradingsymbol and name fields using rapidfuzz.
 
 ### Community 42 - "Community 42"
 Cohesion: 1.0
-Nodes (1): Called by the Kite postback webhook when an order status changes.
+Nodes (1): Prefix search across tradingsymbols. Returns up to 50 results.
 
 ### Community 43 - "Community 43"
 Cohesion: 1.0
-Nodes (1): Subscribe to an instrument beyond the YAML instruments list. Call from on_start(
+Nodes (1): Build in-memory lookup structures and swap them in atomically.
 
 ### Community 44 - "Community 44"
 Cohesion: 1.0
-Nodes (1): Dynamically subscribe to a token. Reference-counted so multiple consumers share
+Nodes (1): Convert Kite instrument dicts to a JSON-serialisable form.
 
 ### Community 45 - "Community 45"
 Cohesion: 1.0
-Nodes (1): Decrement refcount; unsubscribe from KiteTicker when no consumers remain.
+Nodes (1): Write instruments to today's JSON cache file atomically.
 
 ### Community 46 - "Community 46"
 Cohesion: 1.0
-Nodes (1): uvicorn[standard] 0.30.1
+Nodes (1): Group a flat instrument list by segment → name → instrument_type, sorted by expi
 
 ### Community 47 - "Community 47"
 Cohesion: 1.0
-Nodes (1): httpx 0.27.0
+Nodes (1): Reconstruct a flat instrument list from the grouped file structure.
 
 ### Community 48 - "Community 48"
 Cohesion: 1.0
-Nodes (1): pytest 8.2.2
+Nodes (1): Delete instrument JSON files from previous days.
 
 ### Community 49 - "Community 49"
 Cohesion: 1.0
-Nodes (1): debugpy 1.8.1
+Nodes (1): Called every time a new candle closes for a subscribed symbol.         candle =
 
 ### Community 50 - "Community 50"
 Cohesion: 1.0
-Nodes (1): rapidfuzz >=3.9.0
+Nodes (1): Called on every live price tick for subscribed instruments.         tick = {"ins
 
 ### Community 51 - "Community 51"
 Cohesion: 1.0
-Nodes (1): Social/UI Icons SVG Sprite (Bluesky, Discord, GitHub, X, Social, Documentation)
+Nodes (1): Called by the Kite postback webhook when an order status changes.
 
 ### Community 52 - "Community 52"
+Cohesion: 1.0
+Nodes (1): Subscribe to an instrument beyond the YAML instruments list. Call from on_start(
+
+### Community 53 - "Community 53"
+Cohesion: 1.0
+Nodes (1): Dynamically subscribe to a token. Reference-counted so multiple consumers share
+
+### Community 54 - "Community 54"
+Cohesion: 1.0
+Nodes (1): Decrement refcount; unsubscribe from KiteTicker when no consumers remain.
+
+### Community 55 - "Community 55"
+Cohesion: 1.0
+Nodes (1): uvicorn[standard] 0.30.1
+
+### Community 56 - "Community 56"
+Cohesion: 1.0
+Nodes (1): httpx 0.27.0
+
+### Community 57 - "Community 57"
+Cohesion: 1.0
+Nodes (1): pytest 8.2.2
+
+### Community 58 - "Community 58"
+Cohesion: 1.0
+Nodes (1): debugpy 1.8.1
+
+### Community 59 - "Community 59"
+Cohesion: 1.0
+Nodes (1): rapidfuzz >=3.9.0
+
+### Community 60 - "Community 60"
+Cohesion: 1.0
+Nodes (1): Social/UI Icons SVG Sprite (Bluesky, Discord, GitHub, X, Social, Documentation)
+
+### Community 61 - "Community 61"
 Cohesion: 1.0
 Nodes (1): React Logo SVG (blue atom orbital icon)
 
 ## Knowledge Gaps
-- **67 isolated node(s):** `Shared OHLCV candle store with historical backfill + live aggregation.  Single s`, `Capture the loop so ingest_tick (called from KiteTicker thread) can dispatch cor`, `Idempotent backfill via kite.historical_data. Returns number of candles loaded.`, `Called by DataFeed for every tick. Aggregates only into timeframes that have bee`, `Return last n closed candles (historical + live), oldest first. Returns a list c` (+62 more)
+- **77 isolated node(s):** `Shared OHLCV candle store with historical backfill + live aggregation.  Single s`, `Capture the loop so ingest_tick (called from KiteTicker thread) can dispatch cor`, `Idempotent backfill via kite.historical_data. Returns number of candles loaded.`, `Called by DataFeed for every tick. Aggregates only into timeframes that have bee`, `Return last n closed candles (historical + live), oldest first. Returns a list c` (+72 more)
   These have ≤1 connection - possible missing edges or undocumented components.
+- **Thin community `Community 16`** (2 nodes): `kite()`, `order_router.py`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 17`** (2 nodes): `StatusBadge()`, `StatusBadge.tsx`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 18`** (2 nodes): `handleLogout()`, `Layout.tsx`
@@ -356,47 +403,65 @@ Nodes (1): React Logo SVG (blue atom orbital icon)
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 - **Thin community `Community 39`** (1 nodes): `__init__.py`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 40`** (1 nodes): `Called every time a new candle closes for a subscribed symbol.         candle =`
+- **Thin community `Community 40`** (1 nodes): `Return the full instrument dict for a given token.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 41`** (1 nodes): `Called on every live price tick for subscribed instruments.         tick = {"ins`
+- **Thin community `Community 41`** (1 nodes): `Fuzzy search across tradingsymbol and name fields using rapidfuzz.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 42`** (1 nodes): `Called by the Kite postback webhook when an order status changes.`
+- **Thin community `Community 42`** (1 nodes): `Prefix search across tradingsymbols. Returns up to 50 results.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 43`** (1 nodes): `Subscribe to an instrument beyond the YAML instruments list. Call from on_start(`
+- **Thin community `Community 43`** (1 nodes): `Build in-memory lookup structures and swap them in atomically.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 44`** (1 nodes): `Dynamically subscribe to a token. Reference-counted so multiple consumers share`
+- **Thin community `Community 44`** (1 nodes): `Convert Kite instrument dicts to a JSON-serialisable form.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 45`** (1 nodes): `Decrement refcount; unsubscribe from KiteTicker when no consumers remain.`
+- **Thin community `Community 45`** (1 nodes): `Write instruments to today's JSON cache file atomically.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 46`** (1 nodes): `uvicorn[standard] 0.30.1`
+- **Thin community `Community 46`** (1 nodes): `Group a flat instrument list by segment → name → instrument_type, sorted by expi`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 47`** (1 nodes): `httpx 0.27.0`
+- **Thin community `Community 47`** (1 nodes): `Reconstruct a flat instrument list from the grouped file structure.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 48`** (1 nodes): `pytest 8.2.2`
+- **Thin community `Community 48`** (1 nodes): `Delete instrument JSON files from previous days.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 49`** (1 nodes): `debugpy 1.8.1`
+- **Thin community `Community 49`** (1 nodes): `Called every time a new candle closes for a subscribed symbol.         candle =`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 50`** (1 nodes): `rapidfuzz >=3.9.0`
+- **Thin community `Community 50`** (1 nodes): `Called on every live price tick for subscribed instruments.         tick = {"ins`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 51`** (1 nodes): `Social/UI Icons SVG Sprite (Bluesky, Discord, GitHub, X, Social, Documentation)`
+- **Thin community `Community 51`** (1 nodes): `Called by the Kite postback webhook when an order status changes.`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
-- **Thin community `Community 52`** (1 nodes): `React Logo SVG (blue atom orbital icon)`
+- **Thin community `Community 52`** (1 nodes): `Subscribe to an instrument beyond the YAML instruments list. Call from on_start(`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 53`** (1 nodes): `Dynamically subscribe to a token. Reference-counted so multiple consumers share`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 54`** (1 nodes): `Decrement refcount; unsubscribe from KiteTicker when no consumers remain.`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 55`** (1 nodes): `uvicorn[standard] 0.30.1`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 56`** (1 nodes): `httpx 0.27.0`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 57`** (1 nodes): `pytest 8.2.2`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 58`** (1 nodes): `debugpy 1.8.1`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 59`** (1 nodes): `rapidfuzz >=3.9.0`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 60`** (1 nodes): `Social/UI Icons SVG Sprite (Bluesky, Discord, GitHub, X, Social, Documentation)`
+  Too small to be a meaningful cluster - may be noise or needs more connections extracted.
+- **Thin community `Community 61`** (1 nodes): `React Logo SVG (blue atom orbital icon)`
   Too small to be a meaningful cluster - may be noise or needs more connections extracted.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `StrategyLoader` connect `Community 0` to `Community 9`, `Community 3`, `Community 4`, `Community 5`?**
-  _High betweenness centrality (0.062) - this node is a cross-community bridge._
-- **Why does `BaseStrategy` connect `Community 5` to `Community 0`, `Community 2`, `Community 4`, `Community 7`, `Community 9`?**
-  _High betweenness centrality (0.058) - this node is a cross-community bridge._
-- **Why does `lifespan()` connect `Community 4` to `Community 0`, `Community 2`, `Community 3`, `Community 6`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **Are the 25 inferred relationships involving `InstrumentCache` (e.g. with `AuthRequest` and `StrategyRequest`) actually correct?**
-  _`InstrumentCache` has 25 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 25 inferred relationships involving `EventBus` (e.g. with `AuthRequest` and `StrategyRequest`) actually correct?**
-  _`EventBus` has 25 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 26 inferred relationships involving `DataFeed` (e.g. with `AuthRequest` and `StrategyRequest`) actually correct?**
-  _`DataFeed` has 26 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 27 inferred relationships involving `StrategyLoader` (e.g. with `BaseStrategy` and `StrategyState`) actually correct?**
-  _`StrategyLoader` has 27 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `StrategyLoader` connect `Community 0` to `Community 1`, `Community 2`, `Community 4`, `Community 5`, `Community 7`, `Community 9`?**
+  _High betweenness centrality (0.070) - this node is a cross-community bridge._
+- **Why does `BaseStrategy` connect `Community 1` to `Community 0`, `Community 4`, `Community 5`, `Community 6`, `Community 9`?**
+  _High betweenness centrality (0.061) - this node is a cross-community bridge._
+- **Why does `InstrumentCache` connect `Community 0` to `Community 2`, `Community 4`, `Community 5`, `Community 8`, `Community 9`?**
+  _High betweenness centrality (0.056) - this node is a cross-community bridge._
+- **Are the 39 inferred relationships involving `InstrumentCache` (e.g. with `AuthRequest` and `StrategyRequest`) actually correct?**
+  _`InstrumentCache` has 39 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 39 inferred relationships involving `EventBus` (e.g. with `AuthRequest` and `StrategyRequest`) actually correct?**
+  _`EventBus` has 39 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 40 inferred relationships involving `DataFeed` (e.g. with `AuthRequest` and `StrategyRequest`) actually correct?**
+  _`DataFeed` has 40 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 41 inferred relationships involving `StrategyLoader` (e.g. with `BaseStrategy` and `StrategyState`) actually correct?**
+  _`StrategyLoader` has 41 INFERRED edges - model-reasoned connections that need verification._

@@ -9,6 +9,7 @@ services:
     env_file: .env
     environment:
       DEBUG: "1"
+      SCRAPER_URL: "http://scraper:8080"
     command: ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
     ports:
       - "8000:8000"
@@ -23,6 +24,17 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      scraper:
+        condition: service_healthy
+    networks:
+      - trader_net
+
+  scraper:
+    build: ./scraper
+    container_name: kite_scraper
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
     networks:
       - trader_net
 

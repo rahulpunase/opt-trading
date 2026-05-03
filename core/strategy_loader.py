@@ -8,6 +8,7 @@ from typing import Dict, List
 import yaml
 
 from core.base_strategy import BaseStrategy
+from core.chartink_scraper import fetch_chartink_symbols
 from core.state import StrategyState, make_redis_client
 
 logger = logging.getLogger("strategy_loader")
@@ -71,6 +72,29 @@ class StrategyLoader:
         if not config.get("enabled", True):
             logger.info("Loader: %s disabled, skipping", py_file.name)
             return None
+
+        screener_url = config.get("screener_url")
+        if screener_url:
+            screener_timeout = float(config.get("screener_timeout", 10.0))
+            logger.info("Loader: fetching Chartink screener %s", screener_url)
+            screener_symbols = fetch_chartink_symbols(screener_url, timeout=screener_timeout)
+            if screener_symbols:
+                existing = list(config.get("instruments", []) or [])
+                seen = set(existing)
+                for sym in screener_symbols:
+                    if sym not in seen:
+                        existing.append(sym)
+                        seen.add(sym)
+                config["instruments"] = existing
+                logger.info(
+                    "Loader: %s — %d screener symbols, total instruments=%d",
+                    py_file.stem, len(screener_symbols), len(existing),
+                )
+            else:
+                logger.warning(
+                    "Loader: %s — Chartink screener returned no symbols, using static only",
+                    py_file.stem,
+                )
 
         module = self._import_module(py_file)
         klass = self._find_strategy_class(module)

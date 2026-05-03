@@ -8,6 +8,8 @@ instruments:
 timeframe: 15min
 order_type: NRML
 exchange: NFO
+screener_url: "https://chartink.com/screener/near-52-week-high-1740"
+screener_timeout: 10.0 # optional
 
 capital_allocation: 0.25
 max_trades_per_day: 2

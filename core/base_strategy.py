@@ -78,6 +78,9 @@ class BaseStrategy(ABC):
     def get_exchange(self) -> str:
         return self.config.get("exchange", "NSE")
 
+    def get_screener_url(self) -> str | None:
+        return self.config.get("screener_url")
+
     def subscribe_instrument(self, symbol: str, exchange: str) -> None:
         """Subscribe to an instrument beyond the YAML instruments list. Call from on_start()."""
         if self._data_feed is None or self._instrument_cache is None:

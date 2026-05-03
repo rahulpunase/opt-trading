@@ -13,9 +13,8 @@ _CHARTINK_DOMAIN = "chartink.com"
 _PAGE_TIMEOUT = 30_000
 _TABLE_TIMEOUT = 20_000
 
-_SCAN_BUTTON_SELECTOR = "button#getResult, button.scan-button, input[value='Scan Now'], button:has-text('Scan')"
-_TABLE_ROW_SELECTOR = "table#DataTables_Table_0 tbody tr, div.scanner-table table tbody tr"
-_SYMBOL_CELL_INDEX = 1
+_TABLE_ROW_SELECTOR = "div[style*='max-height: 800px'] table tbody tr"
+_SYMBOL_CELL_INDEX = 2
 
 
 def _validate_chartink_url(url: str) -> None:
@@ -39,6 +38,7 @@ def scrape(url: str = Query(..., description="Chartink screener URL")) -> dict:
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    symbols: list[str] = []
     try:
         with sync_playwright() as pw:
             browser = pw.chromium.launch(headless=True)
@@ -55,22 +55,20 @@ def scrape(url: str = Query(..., description="Chartink screener URL")) -> dict:
             page.goto(url, wait_until="networkidle", timeout=_PAGE_TIMEOUT)
 
             try:
-                btn = page.locator(_SCAN_BUTTON_SELECTOR).first
-                if btn.is_visible(timeout=3_000):
-                    logger.debug("clicking scan button")
-                    btn.click()
-            except PlaywrightTimeout:
-                pass
-
-            try:
                 page.wait_for_selector(_TABLE_ROW_SELECTOR, timeout=_TABLE_TIMEOUT)
             except PlaywrightTimeout:
                 logger.warning("results table did not appear within %dms for %s", _TABLE_TIMEOUT, url)
-                browser.close()
                 return {"symbols": []}
 
-            rows = page.locator(_TABLE_ROW_SELECTOR).all()
-            browser.close()
+            for row in page.locator(_TABLE_ROW_SELECTOR).all():
+                try:
+                    cells = row.locator("td").all()
+                    if len(cells) > _SYMBOL_CELL_INDEX:
+                        text = cells[_SYMBOL_CELL_INDEX].inner_text().strip().upper()
+                        if text and text not in ("SYMBOL", "SR.", "-", ""):
+                            symbols.append(text)
+                except Exception as exc:
+                    logger.warning("skipping row due to error: %s", exc)
 
     except PlaywrightTimeout:
         logger.warning("page load timed out for %s", url)
@@ -78,14 +76,6 @@ def scrape(url: str = Query(..., description="Chartink screener URL")) -> dict:
     except Exception as exc:
         logger.error("unexpected error scraping %s: %s", url, exc)
         return {"symbols": []}
-
-    symbols: list[str] = []
-    for row in rows:
-        cells = row.locator("td").all()
-        if len(cells) > _SYMBOL_CELL_INDEX:
-            text = cells[_SYMBOL_CELL_INDEX].inner_text().strip().upper()
-            if text and text not in ("SYMBOL", "SR.", "-", ""):
-                symbols.append(text)
 
     logger.info("resolved %d symbols from %s", len(symbols), url)
     return {"symbols": symbols}

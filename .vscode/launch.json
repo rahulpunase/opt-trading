@@ -2,6 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "name": "Docker: Attach to Scraper",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5679
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}/scraper",
+          "remoteRoot": "/app"
+        }
+      ],
+      "justMyCode": true
+    },
+    {
       "name": "Docker: Attach to FastAPI",
       "type": "debugpy",
       "request": "attach",

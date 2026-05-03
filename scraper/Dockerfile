@@ -1,12 +1,16 @@
 FROM python:3.11-slim-bookworm
 
+# Install browsers to a fixed path so the non-root scraper user can find them
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 RUN useradd -m -u 1000 scraper
 
 WORKDIR /app
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
-    playwright install --with-deps chromium
+    playwright install --with-deps chromium && \
+    chmod -R 755 /ms-playwright
 
 COPY main.py .
 

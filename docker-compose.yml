@@ -35,6 +35,10 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+      - "5679:5679"
+    volumes:
+      - ./scraper:/app
+    command: ["python", "-m", "debugpy", "--listen", "0.0.0.0:5679", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
     networks:
       - trader_net
 

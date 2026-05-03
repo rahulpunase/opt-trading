@@ -27,7 +27,10 @@ export default function App() {
                   <Route path="/strategies" element={<Strategies />} />
                   <Route path="/positions" element={<Positions />} />
                   <Route path="/trades" element={<Trades />} />
-                  <Route path="/symbol/:instrumentToken" element={<SymbolPage />} />
+                  <Route
+                    path="/symbol/:instrumentToken"
+                    element={<SymbolPage />}
+                  />
                 </Route>
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

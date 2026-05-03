@@ -17,7 +17,10 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
   });
 
   // Real-time LTP + volume via KiteTicker WebSocket
-  const { tick: liveTick, error: wsError } = useSymbolQuote(instrumentToken, data?.symbol);
+  const { tick: liveTick, error: wsError } = useSymbolQuote(
+    instrumentToken,
+    data?.symbol,
+  );
 
   if (isLoading) {
     return (
@@ -26,7 +29,10 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
           <div className="h-8 w-32 rounded bg-[var(--color-bg-elevated)]" />
           <div className="flex gap-6">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="h-4 w-16 rounded bg-[var(--color-bg-elevated)]" />
+              <div
+                key={i}
+                className="h-4 w-16 rounded bg-[var(--color-bg-elevated)]"
+              />
             ))}
           </div>
         </div>
@@ -58,7 +64,8 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
 
   // Recompute change relative to prev close using live LTP
   const change = ltp - data.close;
-  const changePct = data.close !== 0 ? (change / data.close) * 100 : data.change_pct;
+  const changePct =
+    data.close !== 0 ? (change / data.close) * 100 : data.change_pct;
   const isUp = changePct >= 0;
   const changeColor = isUp ? "var(--color-profit)" : "var(--color-loss)";
 
@@ -67,21 +74,30 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-[var(--color-text-muted)]">{data.exchange}</p>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              {data.exchange}
+            </p>
             {isNotAuth ? (
-              <span className="text-[10px] text-[var(--color-text-muted)]">● Login to Kite for live feed</span>
+              <span className="text-[10px] text-[var(--color-text-muted)]">
+                ● Login to Kite for live feed
+              </span>
             ) : liveTick ? (
-              <span className="text-[10px] text-[var(--color-profit)]">● Live</span>
+              <span className="text-[10px] text-[var(--color-profit)]">
+                ● Live
+              </span>
             ) : null}
           </div>
-          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{data.symbol}</h1>
+          <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">
+            {data.symbol}
+          </h1>
         </div>
         <div className="text-right">
           <p className="text-3xl font-semibold tabular-nums text-[var(--color-text-primary)]">
             ₹{ltp.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
           </p>
           <p className="text-sm tabular-nums" style={{ color: changeColor }}>
-            {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(2)} ({Math.abs(changePct).toFixed(2)}%)
+            {isUp ? "▲" : "▼"} {Math.abs(change).toFixed(2)} (
+            {Math.abs(changePct).toFixed(2)}%)
           </p>
         </div>
       </div>
@@ -94,9 +110,12 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
           { label: "Volume", value: null, raw: volume.toLocaleString("en-IN") },
         ].map(({ label, value, raw }) => (
           <div key={label}>
-            <p className="text-[10px] text-[var(--color-text-muted)]">{label}</p>
+            <p className="text-[10px] text-[var(--color-text-muted)]">
+              {label}
+            </p>
             <p className="text-sm font-medium tabular-nums text-[var(--color-text-primary)]">
-              {raw ?? `₹${value?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
+              {raw ??
+                `₹${value?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
             </p>
           </div>
         ))}
@@ -126,7 +145,10 @@ function ExpirySection({
     return (
       <div className="flex gap-2">
         {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="h-7 w-24 animate-pulse rounded-full bg-[var(--color-bg-elevated)]" />
+          <div
+            key={i}
+            className="h-7 w-24 animate-pulse rounded-full bg-[var(--color-bg-elevated)]"
+          />
         ))}
       </div>
     );
@@ -137,7 +159,9 @@ function ExpirySection({
     const isNotAuth = msg.includes("not_authenticated") || msg.includes("503");
     return (
       <p className="text-sm text-[var(--color-text-muted)]">
-        {isNotAuth ? "Login to Kite to see expiries." : `Could not load expiries: ${msg}`}
+        {isNotAuth
+          ? "Login to Kite to see expiries."
+          : `Could not load expiries: ${msg}`}
       </p>
     );
   }
@@ -201,7 +225,10 @@ function OptionChainTable({
     return (
       <div className="space-y-1">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-8 animate-pulse rounded bg-[var(--color-bg-elevated)]" />
+          <div
+            key={i}
+            className="h-8 animate-pulse rounded bg-[var(--color-bg-elevated)]"
+          />
         ))}
       </div>
     );
@@ -224,39 +251,60 @@ function OptionChainTable({
   if (chain.length === 0) {
     return (
       <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-bg-surface)] p-6 text-center">
-        <p className="text-sm text-[var(--color-text-muted)]">Option chain is empty for this expiry.</p>
+        <p className="text-sm text-[var(--color-text-muted)]">
+          Option chain is empty for this expiry.
+        </p>
       </div>
     );
   }
 
   // Find ATM strike (closest to current LTP)
-  const atmStrike = ltp > 0
-    ? chain.reduce<OptionChainRow>((best, row) =>
-        Math.abs(row.strike - ltp) < Math.abs(best.strike - ltp) ? row : best
-      , chain[0]).strike
-    : null;
+  const atmStrike =
+    ltp > 0
+      ? chain.reduce<OptionChainRow>(
+          (best, row) =>
+            Math.abs(row.strike - ltp) < Math.abs(best.strike - ltp)
+              ? row
+              : best,
+          chain[0],
+        ).strike
+      : null;
 
   return (
     <div className="overflow-x-auto rounded-xl border border-[var(--color-border)]">
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-elevated)]">
-            <th colSpan={2} className="px-4 py-2 text-center text-[var(--color-profit)] font-semibold">
+            <th
+              colSpan={2}
+              className="px-4 py-2 text-center text-[var(--color-profit)] font-semibold"
+            >
               CALL
             </th>
             <th className="px-4 py-2 text-center font-semibold text-[var(--color-text-primary)]">
               Strike
             </th>
-            <th colSpan={2} className="px-4 py-2 text-center text-[var(--color-loss)] font-semibold">
+            <th
+              colSpan={2}
+              className="px-4 py-2 text-center text-[var(--color-loss)] font-semibold"
+            >
               PUT
             </th>
           </tr>
           <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg-surface)]">
-            <th className="px-4 py-1.5 text-right text-[var(--color-text-muted)] font-medium">LTP</th>
-            <th className="px-4 py-1.5 text-right text-[var(--color-text-muted)] font-medium">Symbol</th>
+            <th className="px-4 py-1.5 text-right text-[var(--color-text-muted)] font-medium">
+              LTP
+            </th>
+            <th className="px-4 py-1.5 text-right text-[var(--color-text-muted)] font-medium">
+              Symbol
+            </th>
             <th className="px-4 py-1.5 text-center text-[var(--color-text-muted)] font-medium" />
-            <th className="px-4 py-1.5 text-left text-[var(--color-text-muted)] font-medium">Symbol</th>
-            <th className="px-4 py-1.5 text-left text-[var(--color-text-muted)] font-medium">LTP</th>
+            <th className="px-4 py-1.5 text-left text-[var(--color-text-muted)] font-medium">
+              Symbol
+            </th>
+            <th className="px-4 py-1.5 text-left text-[var(--color-text-muted)] font-medium">
+              LTP
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -280,9 +328,15 @@ function OptionChainTable({
                   {row.ce?.tradingsymbol ?? "—"}
                 </td>
                 {/* Strike */}
-                <td className={`px-4 py-2 text-center tabular-nums ${isAtm ? "text-[var(--color-accent)]" : "text-[var(--color-text-primary)]"}`}>
+                <td
+                  className={`px-4 py-2 text-center tabular-nums ${isAtm ? "text-[var(--color-accent)]" : "text-[var(--color-text-primary)]"}`}
+                >
                   {row.strike.toLocaleString("en-IN")}
-                  {isAtm && <span className="ml-1 text-[9px] font-bold text-[var(--color-accent)]">ATM</span>}
+                  {isAtm && (
+                    <span className="ml-1 text-[9px] font-bold text-[var(--color-accent)]">
+                      ATM
+                    </span>
+                  )}
                 </td>
                 {/* PE Symbol */}
                 <td className="px-4 py-2 text-left text-[var(--color-text-muted)]">
@@ -304,12 +358,16 @@ function OptionChainTable({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SymbolPage() {
-  const { instrumentToken: tokenParam } = useParams<{ instrumentToken: string }>();
+  const { instrumentToken: tokenParam } = useParams<{
+    instrumentToken: string;
+  }>();
   const instrumentToken = tokenParam ? Number(tokenParam) : NaN;
   const [selectedExpiry, setSelectedExpiry] = useState<string | null>(null);
 
   // Get live LTP for ATM calculation via WebSocket (same stream as QuoteSection)
-  const liveTick = useSymbolQuote(Number.isFinite(instrumentToken) ? instrumentToken : 0);
+  const liveTick = useSymbolQuote(
+    Number.isFinite(instrumentToken) ? instrumentToken : 0,
+  );
 
   if (!Number.isFinite(instrumentToken) || instrumentToken <= 0) return null;
 
@@ -320,11 +378,15 @@ export default function SymbolPage() {
 
       {/* Expiries */}
       <section>
-        <h2 className="mb-3 text-sm font-semibold text-text-primary">Expiries</h2>
+        <h2 className="mb-3 text-sm font-semibold text-text-primary">
+          Expiries
+        </h2>
         <ExpirySection
           instrumentToken={instrumentToken}
           selected={selectedExpiry}
-          onSelect={(exp) => setSelectedExpiry((prev) => (prev === exp ? null : exp))}
+          onSelect={(exp) =>
+            setSelectedExpiry((prev) => (prev === exp ? null : exp))
+          }
         />
       </section>
 
@@ -333,12 +395,15 @@ export default function SymbolPage() {
         <section>
           <h2 className="mb-3 text-sm font-semibold text-text-primary">
             Option Chain —{" "}
-            <span className="text-[var(--color-accent)]">
-              {new Date(selectedExpiry + "T00:00:00").toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
+            <span className="text-accent">
+              {new Date(selectedExpiry + "T00:00:00").toLocaleDateString(
+                "en-IN",
+                {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                },
+              )}
             </span>
           </h2>
           <OptionChainTable

@@ -1,7 +1,7 @@
 # Graph Report - /Users/macbookpro/Documents/projects/trading/opt-trading  (2026-05-03)
 
 ## Corpus Check
-- 40 files · ~51,438 words
+- 40 files · ~56,126 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -77,10 +77,10 @@
 10. `NiftyExpiryStraddle` - 20 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `Resolve a cached instrument to (fno_exchange, fno_underlying_name) for expiry /` --uses--> `CandleStore`  [INFERRED]
-  api/main.py → /Users/macbookpro/Documents/projects/trading/opt-trading/core/candles.py
-- `Best-effort underlying last price for ATM selection, looked up directly by instr` --uses--> `CandleStore`  [INFERRED]
-  api/main.py → /Users/macbookpro/Documents/projects/trading/opt-trading/core/candles.py
+- `CandleStore` --uses--> `Resolve a cached instrument to (fno_exchange, fno_underlying_name) for expiry /`  [INFERRED]
+  /Users/macbookpro/Documents/projects/trading/opt-trading/core/candles.py → api/main.py
+- `CandleStore` --uses--> `Best-effort underlying last price for ATM selection, looked up directly by instr`  [INFERRED]
+  /Users/macbookpro/Documents/projects/trading/opt-trading/core/candles.py → api/main.py
 - `BaseStrategy` --uses--> `Called after /auth when DataFeed is started — injected into all subsequently loa`  [INFERRED]
   /Users/macbookpro/Documents/projects/trading/opt-trading/core/base_strategy.py → core/strategy_loader.py
 - `BaseStrategy` --uses--> `Resolve the strategy's `instruments` list to Kite instrument_tokens.         Fal`  [INFERRED]

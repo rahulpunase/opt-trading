@@ -3,7 +3,6 @@ enabled: true
 paper_trade: true
 
 instruments:
-  - NIFTY
   - RELIANCE
 
 timeframe: 15min

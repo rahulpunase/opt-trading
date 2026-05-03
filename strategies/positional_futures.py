@@ -1,3 +1,32 @@
+"""
+PositionalFutures — EMA crossover trend-following strategy for F&O futures.
+
+Signal logic (evaluated on every candle close):
+  LONG  : EMA-fast crosses ABOVE EMA-slow AND RSI < overbought threshold
+  SHORT : EMA-fast crosses BELOW EMA-slow AND RSI > oversold threshold
+
+Risk management:
+  - Stop loss  : entry ± (atr_sl_multiplier  × ATR)
+  - Target     : entry ± (atr_target_multiplier × ATR)
+  - SL is monitored tick-by-tick via on_tick(); no bracket/cover orders used
+
+Position sizing:
+  - Quantity is currently a fixed placeholder (50 lots) — wire up capital
+    allocation + lot size lookup before going live.
+
+Product type: NRML (overnight F&O) — positions are NOT auto-squared at 3:30 PM.
+Paper-trade safe: all orders route through self.broker which respects paper_trade flag.
+
+Key config params (positional_futures.yaml → params:):
+  ema_fast            default 20   fast EMA period
+  ema_slow            default 50   slow EMA period
+  rsi_period          default 14   RSI lookback
+  atr_period          default 14   ATR lookback
+  rsi_overbought      default 70   RSI ceiling for LONG entries
+  rsi_oversold        default 30   RSI floor for SHORT entries
+  atr_sl_multiplier   default 2.0  ATR multiples for stop loss
+  atr_target_multiplier default 3.0 ATR multiples for target
+"""
 import logging
 from zoneinfo import ZoneInfo
 

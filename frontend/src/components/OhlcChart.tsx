@@ -88,6 +88,15 @@ export default function OhlcChart({
         background: { type: ColorType.Solid, color: "transparent" },
         textColor: "#64748b",
       },
+      localization: {
+        timeFormatter: (time: number) =>
+          new Date(time * 1000).toLocaleTimeString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+      },
       grid: {
         vertLines: { color: "#252836" },
         horzLines: { color: "#252836" },
@@ -97,7 +106,17 @@ export default function OhlcChart({
         horzLine: { color: "#6366f1" },
       },
       rightPriceScale: { borderColor: "#252836" },
-      timeScale: { borderColor: "#252836", timeVisible: true },
+      timeScale: {
+        borderColor: "#252836",
+        timeVisible: true,
+        tickMarkFormatter: (time: number) =>
+          new Date(time * 1000).toLocaleTimeString("en-IN", {
+            timeZone: "Asia/Kolkata",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+      },
       height: candleHeight,
     });
     chart.timeScale().fitContent();
@@ -120,6 +139,15 @@ export default function OhlcChart({
           background: { type: ColorType.Solid, color: "transparent" },
           textColor: "#64748b",
         },
+        localization: {
+          timeFormatter: (time: number) =>
+            new Date(time * 1000).toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            }),
+        },
         grid: {
           vertLines: { color: "#252836" },
           horzLines: { color: "#252836" },
@@ -128,7 +156,17 @@ export default function OhlcChart({
           borderColor: "#252836",
           scaleMargins: { top: 0.1, bottom: 0 },
         },
-        timeScale: { borderColor: "#252836", timeVisible: true },
+        timeScale: {
+          borderColor: "#252836",
+          timeVisible: true,
+          tickMarkFormatter: (time: number) =>
+            new Date(time * 1000).toLocaleTimeString("en-IN", {
+              timeZone: "Asia/Kolkata",
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false,
+            }),
+        },
         height: volHeight,
         crosshair: {
           vertLine: { color: "#6366f1" },

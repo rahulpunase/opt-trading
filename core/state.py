@@ -75,6 +75,18 @@ class StrategyState:
         self.portfolio_set(key, json.dumps(value), ex=ex)
 
 
+# Platform-level helpers (not strategy-scoped) — track which strategies should be running
+# so the platform can auto-restart them after a system restart.
+
+def platform_add_running(r: redis.Redis, strategy_name: str) -> None:
+    r.sadd("platform:running_strategies", strategy_name)
+
+def platform_remove_running(r: redis.Redis, strategy_name: str) -> None:
+    r.srem("platform:running_strategies", strategy_name)
+
+def platform_get_running(r: redis.Redis) -> set[str]:
+    return {s.decode() for s in r.smembers("platform:running_strategies")}
+
 
 def make_redis_client() -> redis.Redis:
     return redis.Redis(

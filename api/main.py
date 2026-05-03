@@ -25,7 +25,7 @@ from core.event_bus import EventBus
 from core.instrument_cache import InstrumentCache
 from core.order_router import OrderRouter
 from core.risk_gate import RiskGate
-from core.state import make_redis_client
+from core.state import make_redis_client, platform_add_running, platform_remove_running, platform_get_running
 from core.strategy_loader import StrategyLoader
 
 load_dotenv()
@@ -108,6 +108,7 @@ async def lifespan(app: FastAPI):
             _loader.set_data_feed(_data_feed)
             _loader.set_candle_store(_candle_store)
             logger.info("DataFeed started from restored access_token")
+            await _auto_restart_strategies()
         except Exception as e:
             logger.warning("DataFeed could not start on startup: %s", e)
 
@@ -183,6 +184,7 @@ async def auth(request_token: str):
         _data_feed.start()
         _loader.set_data_feed(_data_feed)
         _loader.set_candle_store(_candle_store)
+        asyncio.create_task(_auto_restart_strategies())
 
         return {
             "status": "ok",
@@ -257,30 +259,46 @@ async def list_strategies():
     return result
 
 
+async def _start_strategy(name: str) -> None:
+    """Load, warm up, and register a strategy. Raises on failure."""
+    s = _loader.load_by_name(name)
+    if _candle_store is not None:
+        tf = s.get_timeframe()
+        exchange = s.get_exchange()
+        lookback = s.get_lookback()
+        warmup_results = await asyncio.gather(
+            *[_candle_store.warmup(sym, exchange, tf, lookback) for sym in s.get_instruments()],
+            return_exceptions=True,
+        )
+        for sym, res in zip(s.get_instruments(), warmup_results):
+            if isinstance(res, Exception):
+                logger.warning("Warmup failed for %s/%s: %s", exchange, sym, res)
+    s.on_start()
+    _event_bus.register(s)
+    _running_strategies[s.name] = s
+
+
+async def _auto_restart_strategies() -> None:
+    """Re-start any strategies recorded as running before the last shutdown."""
+    pending = platform_get_running(_redis) - set(_running_strategies)
+    for name in pending:
+        try:
+            await _start_strategy(name)
+            logger.info("Auto-restarted strategy: %s", name)
+        except Exception as e:
+            logger.error("Failed to auto-restart %s: %s", name, e)
+            platform_remove_running(_redis, name)
+
+
 @app.post("/strategy/start")
 async def start_strategy(req: StrategyRequest):
     if req.name in _running_strategies:
         return {"status": "already_running", "name": req.name}
     try:
-        s = _loader.load_by_name(req.name)
-
-        if _candle_store is not None:
-            tf = s.get_timeframe()
-            exchange = s.get_exchange()
-            lookback = s.get_lookback()
-            warmup_results = await asyncio.gather(
-                *[_candle_store.warmup(sym, exchange, tf, lookback) for sym in s.get_instruments()],
-                return_exceptions=True,
-            )
-            for sym, res in zip(s.get_instruments(), warmup_results):
-                if isinstance(res, Exception):
-                    logger.warning("Warmup failed for %s/%s: %s", exchange, sym, res)
-
-        s.on_start()
-        _event_bus.register(s)
-        _running_strategies[s.name] = s
-        logger.info("Started strategy %s", s.name)
-        return {"status": "started", "name": s.name}
+        await _start_strategy(req.name)
+        platform_add_running(_redis, req.name)
+        logger.info("Started strategy %s", req.name)
+        return {"status": "started", "name": req.name}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -294,6 +312,7 @@ async def stop_strategy(req: StrategyRequest):
         s.on_stop()
         _event_bus.unregister(req.name)
         del _running_strategies[req.name]
+        platform_remove_running(_redis, req.name)
         return {"status": "stopped", "name": req.name}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

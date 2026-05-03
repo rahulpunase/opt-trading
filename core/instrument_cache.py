@@ -117,8 +117,44 @@ class InstrumentCache:
             if token is not None:
                 tokens.append(token)
             else:
-                logger.warning("No instrument token found for %s:%s", exchange, sym)
+                # For derivatives exchanges, try auto-resolving to the front-month futures contract.
+                if exchange.upper() in ("NFO", "BFO", "MCX", "CDS"):
+                    token = self.get_front_month_futures_token(sym, exchange)
+                if token is not None:
+                    tokens.append(token)
+                else:
+                    logger.warning("No instrument token found for %s:%s", exchange, sym)
         return tokens
+
+    def get_front_month_futures_token(self, base_symbol: str, exchange: str) -> int | None:
+        """
+        Resolve a bare symbol (e.g. "RELIANCE") to the nearest-expiry FUT contract
+        on a derivatives exchange (NFO/BFO/MCX). Returns the instrument_token or None.
+        """
+        if not self._data:
+            return None
+        today = datetime.date.today().isoformat()
+        best_token: int | None = None
+        best_expiry: str | None = None
+        for inst in self._data["by_exchange"].get(exchange.upper(), []):
+            if inst.get("instrument_type") != "FUT":
+                continue
+            inst_name = inst.get("name", "").upper()
+            inst_sym = inst.get("tradingsymbol", "").upper()
+            if inst_name != base_symbol.upper() and not inst_sym.startswith(base_symbol.upper()):
+                continue
+            expiry = inst.get("expiry")
+            if not expiry or expiry < today:
+                continue
+            if best_expiry is None or expiry < best_expiry:
+                best_expiry = expiry
+                best_token = inst["instrument_token"]
+        if best_token is not None:
+            logger.info(
+                "Resolved %s:%s → front-month FUT token=%s expiry=%s",
+                exchange, base_symbol, best_token, best_expiry,
+            )
+        return best_token
 
     def get_instrument(self, token: int | str) -> dict | None:
         """Return the full instrument dict for a given token."""

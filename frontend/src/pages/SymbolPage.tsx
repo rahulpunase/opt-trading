@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
@@ -29,10 +29,7 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
           <div className="h-8 w-32 rounded bg-bg-elevated" />
           <div className="flex gap-6">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-4 w-16 rounded bg-bg-elevated"
-              />
+              <div key={i} className="h-4 w-16 rounded bg-bg-elevated" />
             ))}
           </div>
         </div>
@@ -74,17 +71,13 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <p className="text-xs text-text-muted">
-              {data.exchange}
-            </p>
+            <p className="text-xs text-text-muted">{data.exchange}</p>
             {isNotAuth ? (
               <span className="text-[10px] text-text-muted">
                 ● Login to Kite for live feed
               </span>
             ) : liveTick ? (
-              <span className="text-[10px] text-profit">
-                ● Live
-              </span>
+              <span className="text-[10px] text-profit">● Live</span>
             ) : null}
           </div>
           <h1 className="text-2xl font-bold text-text-primary">
@@ -110,9 +103,7 @@ function QuoteSection({ instrumentToken }: { instrumentToken: number }) {
           { label: "Volume", value: null, raw: volume.toLocaleString("en-IN") },
         ].map(({ label, value, raw }) => (
           <div key={label}>
-            <p className="text-[10px] text-text-muted">
-              {label}
-            </p>
+            <p className="text-[10px] text-text-muted">{label}</p>
             <p className="text-sm font-medium tabular-nums text-text-primary">
               {raw ??
                 `₹${value?.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`}
@@ -140,6 +131,13 @@ function ExpirySection({
     queryFn: () => api.instrumentExpiries(instrumentToken),
     retry: false,
   });
+
+  useEffect(() => {
+    const first = data?.expiries?.[0];
+    if (first && selected === null) {
+      onSelect(first);
+    }
+  }, [data, selected, onSelect]);
 
   if (isLoading) {
     return (
@@ -217,7 +215,7 @@ function OptionChainTable({
   const { data, isLoading, error } = useQuery({
     queryKey: ["instrumentOptionChain", instrumentToken, expiry],
     queryFn: () => api.instrumentOptionChain(instrumentToken, expiry),
-    refetchInterval: 10000,
+    refetchInterval: false,
     retry: false,
   });
 
@@ -225,10 +223,7 @@ function OptionChainTable({
     return (
       <div className="space-y-1">
         {Array.from({ length: 8 }).map((_, i) => (
-          <div
-            key={i}
-            className="h-8 animate-pulse rounded bg-bg-elevated"
-          />
+          <div key={i} className="h-8 animate-pulse rounded bg-bg-elevated" />
         ))}
       </div>
     );

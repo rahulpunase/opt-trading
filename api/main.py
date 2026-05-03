@@ -28,6 +28,13 @@ from core.strategy_loader import StrategyLoader
 
 load_dotenv()
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"))
+
+if os.getenv("DEBUG") == "1":
+    import debugpy
+    try:
+        debugpy.listen(("0.0.0.0", 5678))
+    except RuntimeError:
+        pass  # already listening (e.g. second reload worker)
 logger = logging.getLogger("api")
 
 # Shared singletons
@@ -396,7 +403,7 @@ def _resolve_fno_underlying(inst: dict) -> tuple[str, str]:
     fno_exchange, fno_symbol = _instrument_cache.resolve_fno(tradingsymbol, exchange)
     if fno_exchange != exchange:
         return fno_exchange, fno_symbol
-    name = ((inst.get("name") or tradingsymbol)).upper()
+    name = (tradingsymbol).upper()
     fno_exchange = {"NSE": "NFO", "BSE": "BFO"}.get(exchange, exchange)
     return fno_exchange, name
 

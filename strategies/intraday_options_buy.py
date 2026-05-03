@@ -11,6 +11,31 @@ IST = ZoneInfo("Asia/Kolkata")
 
 
 class IntradayOptionsBuy(BaseStrategy):
+    """
+    Intraday options buying strategy using EMA crossover + RSI confirmation.
+
+    Signal logic (evaluated on every closed candle):
+      - LONG  : fast EMA crosses above slow EMA  AND  RSI > rsi_entry_long  (default 55)
+      - SHORT : fast EMA crosses below slow EMA  AND  RSI < rsi_entry_short (default 45)
+      Default EMAs: 9 (fast) / 21 (slow), RSI period: 14.
+
+    Entry: MARKET order placed immediately on signal. One position per symbol at a time.
+    Caps: max_trades_per_day (default 4) and max_open_positions (default 2) enforced
+          before every entry.
+
+    Risk management (monitored tick-by-tick):
+      - Stop loss : sl_pct     % from entry price (default 0.35 %)
+      - Target    : target1_pct% from entry price (default 0.50 %)
+      Exit fires as a MARKET order the moment either level is breached.
+
+    End-of-day safety: all open positions are force-closed at market close (3:30 PM IST)
+    via on_market_close(), ensuring no overnight exposure.
+
+    State persistence: trade count and open positions are written to Redis on every
+    change and restored on on_start(), so the strategy survives container restarts
+    without losing intraday context.
+    """
+
     def __init__(self, config, broker, state, logger):
         super().__init__(config, broker, state, logger)
         self._candle_history: dict[str, list] = {}

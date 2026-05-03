@@ -6,6 +6,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 import yaml
 
@@ -551,6 +552,74 @@ async def instrument_quote(instrument_token: int):
         raise
     except Exception as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+_CANDLE_INTERVAL_MAP: dict[str, str] = {
+    "1min": "minute",
+    "3min": "3minute",
+    "5min": "5minute",
+    "10min": "10minute",
+    "15min": "15minute",
+    "30min": "30minute",
+    "60min": "60minute",
+    "1d": "day",
+}
+
+
+@app.get("/instruments/{instrument_token}/candles")
+async def instrument_candles(
+    instrument_token: int,
+    timeframe: str = "5min",
+    limit: int = 200,
+):
+    """Return historical OHLCV candles for chart rendering."""
+    _require_auth()
+
+    IST = ZoneInfo("Asia/Kolkata")
+    interval = _CANDLE_INTERVAL_MAP.get(timeframe, "5minute")
+    now = datetime.datetime.now(tz=IST)
+
+    if timeframe == "1d":
+        from_dt = now - datetime.timedelta(days=limit * 2)
+    else:
+        # Convert limit candles → calendar days, padding generously for weekends/holidays.
+        # 375 trading minutes per day; multiply by 2 and add 7 days to always reach
+        # real trading sessions even when today is a weekend or public holiday.
+        minutes = int(timeframe.replace("min", ""))
+        trading_days_needed = max(1, -(-limit * minutes // 375))  # ceiling division
+        calendar_days = trading_days_needed * 2 + 7
+        from_dt = now - datetime.timedelta(days=calendar_days)
+
+    logger.info(
+        "candles request token=%s interval=%s from=%s to=%s",
+        instrument_token, interval,
+        from_dt.strftime("%Y-%m-%d %H:%M:%S"),
+        now.strftime("%Y-%m-%d %H:%M:%S"),
+    )
+
+    try:
+        data = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: _kite.historical_data(instrument_token, from_dt, now, interval),
+        )
+    except Exception as e:
+        logger.error("historical_data failed token=%s: %s", instrument_token, e)
+        raise HTTPException(status_code=502, detail=str(e))
+
+    logger.info("candles response token=%s rows=%d", instrument_token, len(data))
+
+    candles = [
+        {
+            "time": int(c["date"].timestamp()),
+            "open": c["open"],
+            "high": c["high"],
+            "low": c["low"],
+            "close": c["close"],
+            "volume": c["volume"],
+        }
+        for c in data[-limit:]
+    ]
+    return candles
 
 
 @app.get("/instruments/{instrument_token}/expiries")

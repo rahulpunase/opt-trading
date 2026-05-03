@@ -101,6 +101,15 @@ export interface OptionChainRow {
   pe: OptionLeg | null;
 }
 
+export interface CandleBar {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
     headers: { "Content-Type": "application/json" },
@@ -158,6 +167,11 @@ export const api = {
   instrumentOptionChain: (instrumentToken: number, expiry: string) =>
     request<{ symbol: string; exchange: string; expiry: string; chain: OptionChainRow[] }>(
       `/instruments/${instrumentToken}/option-chain?expiry=${encodeURIComponent(expiry)}`
+    ),
+
+  instrumentCandles: (instrumentToken: number, timeframe = "5min", limit = 200) =>
+    request<CandleBar[]>(
+      `/instruments/${instrumentToken}/candles?timeframe=${encodeURIComponent(timeframe)}&limit=${limit}`
     ),
 
   strategyPositions: (name: string) =>

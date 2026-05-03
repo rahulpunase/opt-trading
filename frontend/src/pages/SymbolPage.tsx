@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { OptionChainRow } from "@/lib/api";
 import { useSymbolQuote } from "@/hooks/useSymbolQuote";
+import OhlcChart from "@/components/OhlcChart";
 
 // ─── Quote Section ────────────────────────────────────────────────────────────
 
@@ -370,6 +371,14 @@ export default function SymbolPage() {
     <div className="space-y-6">
       {/* Quote */}
       <QuoteSection instrumentToken={instrumentToken} />
+
+      {/* Price Chart */}
+      <OhlcChart
+        instrumentToken={instrumentToken}
+        symbol={String(instrumentToken)}
+        defaultTimeframe="5min"
+        height={420}
+      />
 
       {/* Expiries */}
       <section>
